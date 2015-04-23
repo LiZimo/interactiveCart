@@ -1,0 +1,23 @@
+NOTES:
+
+
+4/22
+
+I've found this tool called GDAL which can convert shape/geoJSON data to raster format.  
+It is the tool that shows up most when searching for rasterization of vector data.
+The output formats do not include PNG, but geotiff or many of the other formats it does output 
+in easily convert to PNG or anything else we need.  
+
+I've downloaded it, and it runs to completion with no errors using either the .shp 
+or .json files from the website you linked me.  However, my viewer doesn't seem 
+able to show them, so I think something is not quite right.  Many people use this, so
+I don't think it is written wrong.  Here are links to the download, and gdal_rasterize documentation.  
+I've attached some of the output files I made using GDAL.  merica.shp, merica.shx, and merica.json are shape files from the website you linked me.
+
+this is the command I used:
+gdal_rasterize -burn 55 -ts 200 100 -of GTIFF -a_nodata -9999 -init 0 merica.shp tmp.tif
+
+
+
+http://trac.osgeo.org/gdal/wiki/DownloadingGdalBinaries
+http://www.gdal.org/gdal_rasterize.html
