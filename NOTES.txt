@@ -26,3 +26,11 @@ http://www.gdal.org/gdal_rasterize.html
 UPDATE (later that evening...):
 
 Okay, got it to work.  Couldn't open it because the default output type was 64 bit floats, who knew.  Anyway, I'll play around with it a little more and update some photos.  
+
+
+4/29
+
+Since last time, I have figured out how to use QGIS to perform joins on Shape data we have to add attributes such as population density.  Next step with regards to this
+is to automate it in a script and figure out how to construct new columns as functions of existing ones.  gldatransform and gdalwarp are easy to use command line
+programs which can take EPSG code for a coordinate system, as well as lat/long bounds to reproject maps.  I have run CART on a fully constructed dataset where we started
+with only a shape file and CSV of densities, changed these into an ASCII raster file where each point was a density.  The input and output to cart are in the folder Cart-maps.  
