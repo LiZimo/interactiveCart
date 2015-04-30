@@ -1,0 +1,250 @@
+    1  ls
+    2  ls
+    3  cd ..
+    4  ls
+    5  cd ..
+    6  ls
+    7  cd usr
+    8  ls
+    9  cd /
+   10  ls
+   11  cd home
+   12  ls
+   13  cd Asus
+   14  ls
+   15  pwd
+   16  cd /
+   17  pwd
+   18  ls
+   19  cd lib
+   20  ls
+   21  cd ..
+   22  ls
+   23  gcc
+   24  cd var
+   25  ls
+   26  cd ..
+   27  cd usr
+   28  ls
+   29  pwd
+   30  cd local
+   31  ls
+   32  cd lib
+   33  ls
+   34  cd ..
+   35  cd ..
+   36  cd ..
+   37  g++ -v
+   38  g++ -v
+   39  ls
+   40  cd ..
+   41  ls
+   42  cd Asus
+   43  ls
+   44  cd /
+   45  ls
+   46  cd cygdrive
+   47  ls
+   48  cd c
+   49  ls
+   50  cd ..
+   51  ls
+   52  cd c
+   53  ls
+   54  ls
+   55  cd ..
+   56  ls
+   57  cd ..
+   58  ls
+   59  cd home
+   60  ls
+   61  cd cart-1.2.2
+   62  ls
+   63  cd fftw-3.3.4
+   64  ./configure
+   65  ls
+   66  make
+   67  make install
+   68  ls
+   69  cd ..
+   70  ls
+   71  gcc -O -o cart cart.c main.c -lfftw3 -lm
+   72  ls
+   73  cart 1024 512 uspop.dat output.dat
+   74  ls
+   75  cat cart
+   76  ls
+   77  cd ..
+   78  ls
+   79  cd cart-1.2.2
+   80  ls
+   81  rm cart
+   82  ls
+   83  hi
+   84  gcc -O -o cart cart.c main.c -lfftw3 -lm
+   85  ls
+   86  rm fftw3.h
+   87  ls
+   88  gcc -o cart cart.c main.c -lfftw3 -lm
+   89  ls
+   90  cd fftw-3.3.4
+   91  ls
+   92  cd ..
+   93  ls
+   94  cd ..
+   95  ls
+   96  cd cart-1.2.2
+   97  gcc -o cart.exe cart.c main.c -lfftw3 -lm
+   98  ls
+   99  cart.exe 1024 512 uspop.dat output.dat
+  100  cart.exe 1024 512 uspop.dat output.dat
+  101  cart.exe
+  102  gcc -o cart cart.c main.c -lfftw3 -lm
+  103  ls
+  104  gcc -o cart.a cart.c main.c -lfftw3 -lm
+  105  ls
+  106  rm cart.exe
+  107  ls
+  108  cart.a 1024 512 uspop.dat output.dat
+  109  ./cart.a 1024 512 uspop.dat output.dat
+  110  ls
+  111  ./cart.a 1024 512 test1.dat output_test1.dat
+  112  ./cart.a 1024 512 test1.txt output_test1.dat
+  113  ./cart.a 1024 512 test2.txt output_test2.dat
+  114  ./cart.a 1024 512 test3.txt output_test3.dat
+  115  ./cart.a 1024 512 test4.txt output_test4.dat
+  116  which svn
+  117  pwd
+  118  sl
+  119  ls
+  120  ls
+  121  cd ..
+  122  ls
+  123  pwd
+  124  mkdir teem
+  125  cd teem
+  126   svn co https://svn.code.sf.net/p/teem/code/teem/trunk teem
+  127  ls
+  128  cd ..
+  129  ls
+  130  mv teem2
+  131  cd teem t
+  132  mv t/teem .
+  133  ls
+  134  pwd
+  135  ls
+  136  cd ..
+  137  ls
+  138  mv teem t
+  139  cd t/teem/ .
+  140  ls
+  141  pwd
+  142  cd ..
+  143  ls
+  144  mv t/teem .
+  145  ls
+  146  pwd
+  147  cd ..
+  148  ls
+  149  cd t
+  150  ls
+  151  mv teem ..
+  152  ls
+  153  cd ..
+  154  ls
+  155  rmdir t
+  156  ls
+  157  which cmake
+  158  which ccmake
+  159  ls
+  160  mkdir teem-build
+  161  cd teem-build
+  162  ls
+  163  ccmake ../teem
+  164  pwd
+  165  fg
+  166  ls
+  167  make
+  168  make install
+  169  ls
+  170  path
+  171  cd ../teem-install/
+  172  echo $PATH
+  173  PATH=$PATH:`pwd`
+  174  cd
+  175  which unu
+  176  cd -
+  177  ls
+  178  cd bin
+  179  ls
+  180  ./unu
+  181  PATH=$PATH:`pwd`
+  182  ls
+  183  cd
+  184  un
+  185  unu
+  186  ls
+  187  pwd
+  188  ls
+  189  cd /home/
+  190  ls
+  191  cd cart-1.2.2/
+  192  ls
+  193  more test1.
+  194  more test1.txt
+  195  more test2.txt
+  196  ls
+  197  unu minmax test?.txt
+  198  unu quantize -b 8 -i test1.txt -min 0 -max 2 -o test1.png
+  199  open .
+  200  start .
+  201  dir
+  202  which dir
+  203  open .
+  204  explorer .
+  205  unu quantize -b 8 -i test2.txt -min 0 -max 2 -o test2.png
+  206  pwd
+  207  ls
+  208  unu jhisto -i output_test1.dat -min 0 0 -max 1024 512 -b 1025 513 -t float | unu 1op log1p | unu quantize -b 8 -o output_test1.png
+  209  unu dice -i output_test1.dat -a 0 -o ./
+  210  more output_test1.dat
+  211  ls
+  212  unu minmax 0.nrrd 1.nrrd
+  213  unu jhisto -i 0.nrrd 1.nrrd -min 0 0 -max 1024 512 -b 1025 513 -t float -o tmp.nrrd
+  214  unu quantize -b 8 -i tmp.nrrd -o tmp.png
+  215  more output_test1.dat
+  216  more output_test1.dat
+  217  more output_test1.dat
+  218  unu histo -i 0.nrrd -min 0 -max 1024 -b 1025 | unu dhisto -h 400 -o tmp.png
+  219  unu histo -i 1.nrrd -min 0 -max 512 -b 513 | unu dhisto -h 400 -o tmp.png
+  220  unu jhisto -i output_test2.dat -min 0 0 -max 1024 512 -b 1025 513 -t float | unu 1op log1p | unu quantize -b 8 -o output_test2.png
+  221  more output_test2.
+  222  more output_test2.dat
+  223  unu jhisto -i output_test2.dat -min 0 0 -max 1024 512 -b 1025 513 -t float | unu minmax -
+  224  unu reshape
+  225  unu resample
+  226  unu resample -i test2.txt -s 256 256 -o test2_sq.txt
+  227  ./cart.a 256 256 test2_sq.txt output_test2_sq.dat
+  228  unu minmax output_test2_sq.dat
+  229  unu jhisto -i output_test2_sq.dat -min 0 0 -max 256 256 -b 2048 2048 | unu quantize -b 8 -o tmp.png
+  230  unu resample -i test2.txt -s 128 256 -o test2_sq.txt
+  231  unu resample -i test2.txt -s 128 256 -k cheap -o test2_sq.txt
+  232  ./cart.a 128 256 test2_sq.txt output_test2_sq.dat
+  233  more output_test2_sq.dat
+  234  unu slice -i output_test2_sq.dat -a 0 -p 0 | unu minmax -
+  235  unu slice -i output_test2_sq.dat -a 0 -p 1 | unu minmax -
+  236  unu jhisto -i output_test2_sq.dat -min 0 0 -max 128 256 -b 1024 2048 | unu quantize -b 8 -o tmp.png
+  237  unu resample -i test2.txt -s 64 64 -k cheap -o test2_sq.txt
+  238  ./cart.a 64 64 test2_sq.txt output_test2_sq.dat
+  239  unu jhisto -i output_test2_sq.dat -min 0 0 -max 64 64 -b 800 800
+  240  unu jhisto -i output_test2_sq.dat -min 0 0 -max 64 64 -b 800 800 | unu head -
+  241  unu jhisto -i output_test2_sq.dat -min 0 0 -max 64 64 -b 800 800 | unu minmax -
+  242  unu jhisto -i output_test2_sq.dat -min 0 0 -max 64 64 -b 800 800 | unu quantize -b 8 -o tmp.png
+  243*
+  244  more output.dat
+  245  history
+  246  ./cart.a 1024 512 uspop.dat output.dat
+  247  history
+  248  unu quantize -b 8 -i uspop.dat -o uspop.png
+  249  unu gamma -i uspop.dat -g 5 | unu quantize -b 8 -o uspop.png
+  250  history
