@@ -1,4 +1,4 @@
-CFLAGS = -O7
+CFLAGS = -O3
 #CFLAGS = -g
 #CFLAGS = -p
 CC = gcc
@@ -33,13 +33,7 @@ cart2v.o:cart2v.c Makefile
 main.o:main.c Makefile
 	$(CC) $(CFLAGS) -c main.c
 
-interp:interp.o
-	$(CC) $(CFLAGS) -o interp interp.o
-
-interp.o:interp.c Makefile
-	$(CC) $(CFLAGS) -c interp.c
-
 clean:
 	rm -fv *.o
 
-all: cart cart2 cartv cart2v interp
+all: cart cart2 cartv cart2v

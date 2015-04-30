@@ -80,7 +80,7 @@ void writepoints(FILE *stream, double *gridx, double *gridy, int npoints)
   for (i=0; i<npoints; i++) fprintf(stream,"%g %g\n",gridx[i],gridy[i]);
 }
 
-
+int
 main(int argc, char *argv[])
 {
   int xsize,ysize;
