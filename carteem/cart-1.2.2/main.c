@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <teem/meet.h>
 
 #include "cart.h"
 
@@ -80,8 +81,12 @@ void writepoints(FILE *stream, double *gridx, double *gridy, int npoints)
   for (i=0; i<npoints; i++) fprintf(stream,"%g %g\n",gridx[i],gridy[i]);
 }
 
+static const char *cartInfo =
+  ("very lightly Teem-fied cart, "
+   "based on http://www-personal.umich.edu/~mejn/cart/.");
+
 int
-main(int argc, char *argv[])
+main(int argc, const char *argv[])
 {
   int xsize,ysize;
   double *gridx,*gridy;  // Array for grid points
@@ -89,46 +94,52 @@ main(int argc, char *argv[])
   FILE *infp;
   FILE *outfp;
 
-  /* Read the command-line parameters and open the input and output files */
+  const char *me = argv[0];
+  airArray *mop = airMopNew();
+  hestParm *hparm = hestParmNew();
+  hestOpt *hopt = NULL;
+  char *inName, *outName;
+  airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
+  hestOptAdd(&hopt, NULL, "xsize", airTypeInt, 1, 1, &xsize, NULL,
+             "xsize");
+  hestOptAdd(&hopt, NULL, "ysize", airTypeInt, 1, 1, &ysize, NULL,
+             "ysize");
+  hestOptAdd(&hopt, NULL, "inputfile", airTypeString, 1, 1, &inName, NULL,
+             "input filename");
+  hestOptAdd(&hopt, NULL, "outputfile", airTypeString, 1, 1, &outName, NULL,
+             "output filename");
+  hestParseOrDie(hopt, argc-1, argv+1, hparm,
+                 me, cartInfo, AIR_TRUE, AIR_TRUE, AIR_TRUE);
+  airMopAdd(mop, hopt, AIR_CAST(airMopper, hestOptFree), airMopAlways);
+  airMopAdd(mop, hopt, AIR_CAST(airMopper, hestParseFree), airMopAlways);
 
-  if (argc<5) {
-    fprintf(stderr,"Usage: %s xsize ysize inputfile outputfile\n",argv[0]);
-    exit(1);
-  }
-  xsize = atoi(argv[1]);
-  if (xsize<1) {
-    fprintf(stderr,"%s: xsize botched\n",argv[0]);
-    exit(2);
-  }
-  ysize = atoi(argv[2]);
-  if (ysize<1) {
-    fprintf(stderr,"%s: ysize botched\n",argv[0]);
-    exit(3);
-  }
-  infp = fopen(argv[3],"r");
+  infp = fopen(inName,"r");
   if (infp==NULL) {
-    fprintf(stderr,"%s: unable to open file `%s'\n",argv[0],argv[3]);
+    fprintf(stderr,"%s: unable to open file `%s'\n", me, inName);
     exit(4);
   }
-  outfp = fopen(argv[4],"w");
+  airMopAdd(mop, infp, (airMopper)airFclose, airMopAlways);
+  outfp = fopen(outName,"w");
   if (outfp==NULL) {
-    fprintf(stderr,"%s: unable to open file `%s'\n",argv[0],argv[4]);
+    fprintf(stderr,"%s: unable to open file `%s'\n", me, outName);
     exit(5);
   }
+  airMopAdd(mop, outfp, (airMopper)airFclose, airMopAlways);
 
   /* Allocate space for the cartogram code to use */
 
-  cart_makews(xsize,ysize);
+  cartContext *ctx = cartContextNew();
+  airMopAdd(mop, ctx, (airMopper)cartContextNix, airMopAlways);
+  cart_makews(ctx, xsize,ysize);
 
   /* Read in the population data, transform it, then destroy it again */
 
   rho = cart_dmalloc(xsize,ysize);
   if (readpop(infp,rho,xsize,ysize)) {
-    fprintf(stderr,"%s: density file contains too few or incorrect data\n",
-	    argv[0]);
+    fprintf(stderr,"%s: density file contains too few or incorrect data\n", me);
     exit(6);
   }
-  cart_transform(rho,xsize,ysize);
+  cart_transform(ctx,rho,xsize,ysize);
   cart_dfree(rho);
 
   /* Create the grid of points */
@@ -138,21 +149,16 @@ main(int argc, char *argv[])
   creategrid(gridx,gridy,xsize,ysize);
 
   /* Make the cartogram */
-
-  cart_makecart(gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
+  cart_makecart(ctx,gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
 
   /* Write out the final positions of the grid points */
-
   writepoints(outfp,gridx,gridy,(xsize+1)*(ysize+1));
 
   /* Free up the allocated space */
-
-  cart_freews(xsize,ysize);
+  cart_freews(ctx,xsize,ysize);
   free(gridx);
   free(gridy);
 
-  /* Close the input and output files */
-
-  fclose(infp);
-  fclose(outfp);
+  airMopOkay(mop);
+  return 0;
 }

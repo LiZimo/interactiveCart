@@ -1,0 +1,8 @@
+NRRD0001
+# Complete NRRD file format specification at:
+# http://teem.sourceforge.net/nrrd/format.html
+type: double
+dimension: 2
+sizes: 1024 512
+encoding: ASCII
+data file: ./uspop.dat

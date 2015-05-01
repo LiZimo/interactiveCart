@@ -1,0 +1,14 @@
+
+This caused a difference from the reference implementation:
+
+  unu swap -i uspop.dat -a 0 1 | unu convert -t double -o uspop.nrrd
+  ./tcart -i uspop.nrrd -o output.dat
+
+because the text data is first read in as floats, whereas this:
+
+  unu make -h -i uspop.dat -s 1024 512 -t double -e ascii -o uspop.nhdr
+  unu swap -i uspop.nhdr -a 0 1 -o uspop.nrrd
+  ./tcart -i uspop.nrrd -o output.dat
+
+exactly matched the reference implementation
+
