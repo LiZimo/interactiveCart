@@ -1,0 +1,42 @@
+##Inputs: Geographic shape file, density LUT, projection
+##
+##
+##Getting the cart_map: 
+##
+##Shapefile (---ogr2ogr--->) 
+##shapefile w/ desired projection (---gdal_rasterize--->) 
+##rasterized image; each region marked by id (---tiff2nrrd---->) 
+##raster nrrd file (---unu lut ---->) 
+##raster image, id's replaced with densities (---cart--->) 
+##cart map
+##
+##
+##Applying the cart_map:
+##
+##shapefile (--WtoI--->) 
+##raster coordinates of initial boundary points (---cart map--->) 
+##new raster coordinates of region boundaries (---ItoW--->) 
+##new projection-space coordinates of boundary points (---gdal_rasterize--->) 
+##output image
+##
+
+## 
+
+SHAPE = $1
+LUT = $2
+PROJECTION = $3
+NUMROWS = $4
+NUMCOLS = $5
+OUTFILE = $6
+mkdir tmp
+ogr2ogr -overwrite -t_srs $PROJECTION tmp $SHAPE
+cd tmp
+gdal_rasterize -ts $NUMCOLS $NUMROWS -init -1 -a STATE OGREGeoJSON.shp raster_id.tif
+./tiff2nhdr -i raster_id.tif -o nhrd_raster_id.nhdr
+unu lut -m $LUT -i nhrd_raster -o nhrd_raster_dnsty.nhdr
+
+
+./cart.a $NUMCOLS $NUMROWS input.dat cart_map.dat
+
+
+
