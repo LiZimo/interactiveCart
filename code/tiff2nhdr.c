@@ -106,35 +106,35 @@ main(int argc, const char* argv[]) {
   int ntype;
   if (8 == bitsPerSample) {
     if (SAMPLEFORMAT_UINT == sampleFormat) {
-      ntype = nrrdTypeChar;
-    } else if (SAMPLEFORMAT_INT == sampleFormat) {
       ntype = nrrdTypeUChar;
+    } else if (SAMPLEFORMAT_INT == sampleFormat) {
+      ntype = nrrdTypeChar;
     } else {
       fprintf(stderr, "%s: 8-bit SAMPLEFORMAT_IEEEFP confusing\n", me);
       airMopError(mop); return 1;
     }
   } else if (16 == bitsPerSample) {
     if (SAMPLEFORMAT_UINT == sampleFormat) {
-      ntype = nrrdTypeShort;
-    } else if (SAMPLEFORMAT_INT == sampleFormat) {
       ntype = nrrdTypeUShort;
+    } else if (SAMPLEFORMAT_INT == sampleFormat) {
+      ntype = nrrdTypeShort;
     } else {
       fprintf(stderr, "%s: 16-bit SAMPLEFORMAT_IEEEFP confusing\n", me);
       airMopError(mop); return 1;
     }
   } else if (32 == bitsPerSample) {
     if (SAMPLEFORMAT_UINT == sampleFormat) {
-      ntype = nrrdTypeInt;
-    } else if (SAMPLEFORMAT_INT == sampleFormat) {
       ntype = nrrdTypeUInt;
+    } else if (SAMPLEFORMAT_INT == sampleFormat) {
+      ntype = nrrdTypeInt;
     } else {
       ntype = nrrdTypeFloat;
     }
   } else if (64 == bitsPerSample) {
     if (SAMPLEFORMAT_UINT == sampleFormat) {
-      ntype = nrrdTypeLLong;
-    } else if (SAMPLEFORMAT_INT == sampleFormat) {
       ntype = nrrdTypeULLong;
+    } else if (SAMPLEFORMAT_INT == sampleFormat) {
+      ntype = nrrdTypeLLong;
     } else {
       ntype = nrrdTypeDouble;
     }
