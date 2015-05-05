@@ -1,14 +1,17 @@
 
-This caused a difference from the reference implementation:
+To run the reference implementation:
+  ./ocart 1024 512 uspop.dat usp-ocart.nrrd
+
+Running tcart this way
 
   unu swap -i uspop.dat -a 0 1 | unu convert -t double -o uspop.nrrd
-  ./tcart -i uspop.nrrd -o output.dat
+  ./tcart -i uspop.nrrd -o usp-tcart.nrrd
 
+resulted in differences around 2e-06
 because the text data is first read in as floats, whereas this:
 
   unu make -h -i uspop.dat -s 1024 512 -t double -e ascii -o uspop.nhdr
   unu swap -i uspop.nhdr -a 0 1 -o uspop.nrrd
-  ./tcart -i uspop.nrrd -o output.dat
+  ./tcart -i uspop.nrrd -o usp-tcart.nrrd
 
-exactly matched the reference implementation
-
+resulted in differences around 2e-10

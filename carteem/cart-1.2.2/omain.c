@@ -88,7 +88,7 @@ main(int argc, const char *argv[])
   airArray *mop = airMopNew();
   hestParm *hparm = hestParmNew();
   hestOpt *hopt = NULL;
-  char *err, *inName, *outName;
+  char *err, *inName, *outName, *rgName;
   airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
   hestOptAdd(&hopt, NULL, "xsize", airTypeInt, 1, 1, &xsize, NULL,
              "xsize");
@@ -98,6 +98,10 @@ main(int argc, const char *argv[])
              "input filename");
   hestOptAdd(&hopt, NULL, "outputfile", airTypeString, 1, 1, &outName, NULL,
              "output filename; should end with .nrrd");
+  hestOptAdd(&hopt, "g", "gridfile", airTypeString, 1, 1, &rgName, "",
+             "if given a filename with this option, the reference grid "
+             "(with no displacement from the cartogram) is saved here, "
+             "to simplify inspection of cartogram results. ");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
                  me, cartInfo, AIR_TRUE, AIR_TRUE, AIR_TRUE);
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestOptFree), airMopAlways);
@@ -144,6 +148,18 @@ main(int argc, const char *argv[])
   gridx = (double*)(ngridx->data);
   gridy = (double*)(ngridy->data);
   creategrid(gridx,gridy,xsize,ysize);
+  Nrrd *ngrid = nrrdNew();
+  airMopAdd(mop, ngrid, (airMopper)nrrdNuke, airMopAlways);
+  const Nrrd *njoin[2] = {ngridx, ngridy};
+  if (strlen(rgName)) {
+    if (nrrdJoin(ngrid, njoin, 2, 0, AIR_TRUE) ||
+        nrrdSave(rgName, ngrid, NULL)) {
+      airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+      fprintf(stderr, "%s: problem creating or saving reference grid: %s", me, err);
+      airMopError(mop);
+      exit(8);
+    }
+  }
 
   /* Make the cartogram */
   double time0 = airTime();
@@ -151,15 +167,12 @@ main(int argc, const char *argv[])
   double time1 = airTime();
   printf("%s:              ... %g secs\n", me, time1-time0);
 
-  Nrrd *ngrid = nrrdNew();
-  airMopAdd(mop, ngrid, (airMopper)nrrdNuke, airMopAlways);
-  const Nrrd *njoin[2] = {ngridx, ngridy};
   if (nrrdJoin(ngrid, njoin, 2, 0, AIR_TRUE) ||
       nrrdSave(outName, ngrid, NULL)) {
     airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
     fprintf(stderr, "%s: problem creating or saving output grid: %s", me, err);
     airMopError(mop);
-    exit(7);
+    exit(9);
   }
 
   /* Free up the allocated space */

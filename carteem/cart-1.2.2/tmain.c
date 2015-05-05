@@ -91,7 +91,7 @@ main(int argc, const char *argv[]) {
   hestParm *hparm = hestParmNew();
   hestOpt *hopt = NULL;
   Nrrd *nrho;
-  char *err, *outName;
+  char *err, *outName, *rgName;
   unsigned int repeats;
   airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
   hestOptAdd(&hopt, "i", "rho", airTypeOther, 1, 1, &nrho, NULL,
@@ -100,6 +100,10 @@ main(int argc, const char *argv[]) {
              "number of times to re-run the computation, just so "
              "that it takes longer and provides an easier target "
              "for profiling tools");
+  hestOptAdd(&hopt, "g", "gridfile", airTypeString, 1, 1, &rgName, "",
+             "if given a filename with this option, the reference grid "
+             "(with no displacement from the cartogram) is saved here, "
+             "to simplify inspection of cartogram results. ");
   hestOptAdd(&hopt, "o", "fname", airTypeString, 1, 1, &outName, NULL,
              "output filename");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
@@ -147,6 +151,14 @@ main(int argc, const char *argv[]) {
       printf("%s: %u/%u begins ... \n", me, repIdx, repeats);
     }
     creategrid(gridxy,xsize,ysize);
+    if (!repIdx && strlen(rgName)) {
+      if (nrrdSave(rgName, ngridxy, NULL)) {
+        airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+        fprintf(stderr, "%s: problem saving reference grid: %s", me, err);
+        airMopError(mop);
+        exit(7);
+      }
+    }
     double time0 = airTime();
     cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
     double time1 = airTime();
@@ -159,7 +171,7 @@ main(int argc, const char *argv[]) {
 
   if (nrrdSave(outName, ngridxy, NULL)) {
     airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
-    fprintf(stderr, "%s: problem creating or saving output grid: %s", me, err);
+    fprintf(stderr, "%s: problem saving output grid: %s", me, err);
     airMopError(mop);
     exit(7);
   }
