@@ -1,0 +1,18 @@
+http://eric.clst.org/Stuff/USGeoJSON
+
+states:   http://eric.clst.org/wupl/Stuff/gz_2010_us_040_00_500k.json
+counties: http://eric.clst.org/wupl/Stuff/gz_2010_us_050_00_500k.json
+
+
+http://windowontheprairie.com/wp-content/uploads/2010/07/Monument-plaque.jpg
+center of 48 states: 39 degrees 50 minutes, -98 degrees 35 minutes
+ == 39.83 -98.583
+
+
+http://resources.arcgis.com/en/help/main/10.1/index.html#//003r0000001n000000
+  explains "two standard parallels":
+  Used for the conterminous United States, normally using 29°30' and 45°30' as the two standard parallels. For this projection, the maximum scale distortion for the 48 states is 1.25 percent.
+  --> +lat_1=29.5 +lat_2=45.5
+
+http://www.georeference.org/doc/lambert_conformal_conic.htm
+  though this says "Use 32 for the 1st Standard Latitude and 44 for the 2nd Standard Latitude "
