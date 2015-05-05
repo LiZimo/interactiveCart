@@ -67,8 +67,8 @@ void creategrid(double *gridx, double *gridy, int xsize, int ysize)
   int ix,iy;
   int i;
 
-  for (iy=0,i=0; iy<=ysize; iy++) {
-    for (ix=0; ix<=xsize; ix++) {
+  for (ix=0; ix<=xsize; ix++) {
+    for (iy=0,i=0; iy<=ysize; iy++) {
       gridx[i] = ix;
       gridy[i] = iy;
       i++;
