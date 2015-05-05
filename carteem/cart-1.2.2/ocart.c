@@ -121,6 +121,7 @@ void cart_freews(cartContext *ctx, int xsize, int ysize)
   free(ctx->expky);
 
   for (i=0; i<5; i++) fftw_destroy_plan(ctx->rhotplan[i]);
+  fftw_cleanup(); /* http://www.fftw.org/doc/Using-Plans.html */
 }
 
 

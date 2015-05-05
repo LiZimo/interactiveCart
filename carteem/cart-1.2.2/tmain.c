@@ -62,29 +62,20 @@ int readpop(/* FILE *stream, double **rho */ double *rho, int xsize, int ysize)
 
 /* Function to make the grid of points */
 
-void creategrid(double *gridx, double *gridy, int xsize, int ysize)
+void creategrid(double *gridxy, int xsize, int ysize)
 {
   int ix,iy;
-  int i;
+  int i=0;
 
-  for (ix=0; ix<=xsize; ix++) {
-    for (iy=0,i=0; iy<=ysize; iy++) {
-      gridx[i] = ix;
-      gridy[i] = iy;
+  for (iy=0; iy<=ysize; iy++) {
+    for (ix=0; ix<=xsize; ix++) {
+      gridxy[0 + 2*i] = ix;
+      gridxy[1 + 2*i] = iy;
       i++;
     }
   }
 }
 
-
-/* Function to write out the grid points */
-
-void writepoints(FILE *stream, double *gridx, double *gridy, int npoints)
-{
-  int i;
-
-  for (i=0; i<npoints; i++) fprintf(stream,"%g %g\n",gridx[i],gridy[i]);
-}
 
 static const char *cartInfo =
   ("heavily Teem-fied cart, "
@@ -92,8 +83,7 @@ static const char *cartInfo =
 
 int
 main(int argc, const char *argv[]) {
-  double *gridx,*gridy;  // Array for grid points
-  FILE *outfp;
+  double *gridxy;  // Array for grid points
   cartContext *ctx;
 
   const char *me = argv[0];
@@ -101,7 +91,7 @@ main(int argc, const char *argv[]) {
   hestParm *hparm = hestParmNew();
   hestOpt *hopt = NULL;
   Nrrd *nrho;
-  char *outName;
+  char *err, *outName;
   unsigned int repeats;
   airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
   hestOptAdd(&hopt, "i", "rho", airTypeOther, 1, 1, &nrho, NULL,
@@ -132,39 +122,50 @@ main(int argc, const char *argv[]) {
 
   /* Allocate space for the cartogram code to use */
   cart_makews(ctx,xsize,ysize);
+  fprintf(stderr, "%s: x,y size = %d %d\n", me, xsize, ysize);
 
   /* add OFFSET*mean */
   readpop(rho,xsize,ysize);
   cart_forward(ctx,rho,xsize,ysize);
 
   /* Create the grid of points */
-
-  gridx = malloc((xsize+1)*(ysize+1)*sizeof(double));
-  gridy = malloc((xsize+1)*(ysize+1)*sizeof(double));
+  Nrrd *ngridxy = nrrdNew();
+  airMopAdd(mop, ngridxy, (airMopper)nrrdNuke, airMopAlways);
+  size_t gsize[3] = {2, xsize+1, ysize+1};
+  if (nrrdMaybeAlloc_nva(ngridxy, nrrdTypeDouble, 3, gsize)) {
+    airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+    fprintf(stderr, "%s: problem allocating grid: %s", me, err);
+    airMopError(mop);
+    exit(7);
+  }
+  gridxy = (double*)(ngridxy->data);
 
   /* Make the cartogram */
   unsigned int repIdx;
   for (repIdx=0; repIdx<repeats; repIdx++) {
     if (repeats > 1) {
-      printf("%s: repeat %u/%u\n", me, repIdx, repeats);
+      printf("%s: %u/%u begins ... \n", me, repIdx, repeats);
     }
-    creategrid(gridx,gridy,xsize,ysize);
-    cart_makecart(ctx,gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
+    creategrid(gridxy,xsize,ysize);
+    double time0 = airTime();
+    cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
+    double time1 = airTime();
+    if (repeats > 1) {
+      printf("%s:              ... %g secs for %u/%u\n", me, time1-time0, repIdx, repeats);
+    } else {
+      printf("%s:              ... %g secs\n", me, time1-time0);
+    }
   }
 
-  /* Write out the final positions of the grid points */
-  if (!( outfp = fopen(outName, "w") )) {
-    fprintf(stderr, "%s: couldn't open %s for writing\n", me, outName);
+  if (nrrdSave(outName, ngridxy, NULL)) {
+    airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+    fprintf(stderr, "%s: problem creating or saving output grid: %s", me, err);
     airMopError(mop);
-    return 1;
+    exit(7);
   }
-  airMopAdd(mop, outfp, (airMopper)airFclose, airMopAlways);
-  writepoints(outfp,gridx,gridy,(xsize+1)*(ysize+1));
 
   /* Free up the allocated space */
   cart_freews(ctx,xsize,ysize);
-  free(gridx);
-  free(gridy);
 
   /* cleanup */
   airMopOkay(mop);

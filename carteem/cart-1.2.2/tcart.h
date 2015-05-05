@@ -50,7 +50,7 @@ extern void cart_forward(cartContext *ctx, double *rho, int xsize, int ysize);
 extern double** cart_dmalloc(int xsize, int ysize);
 extern void cart_dfree(double **userrho);
 extern void cart_makecart(cartContext *ctx,
-                          double *pointx, double *pointy, int npoints,
+                          double *pointxy, int npoints,
                           int xsize, int ysize, double blur);
 
 #endif

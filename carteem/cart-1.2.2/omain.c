@@ -60,9 +60,9 @@ int readpop(FILE *stream, double **rho, int xsize, int ysize)
 void creategrid(double *gridx, double *gridy, int xsize, int ysize)
 {
   int ix,iy;
-  int i;
+  int i=0;
 
-  for (iy=0,i=0; iy<=ysize; iy++) {
+  for (iy=0; iy<=ysize; iy++) {
     for (ix=0; ix<=xsize; ix++) {
       gridx[i] = ix;
       gridy[i] = iy;
@@ -71,15 +71,6 @@ void creategrid(double *gridx, double *gridy, int xsize, int ysize)
   }
 }
 
-
-/* Function to write out the grid points */
-
-void writepoints(FILE *stream, double *gridx, double *gridy, int npoints)
-{
-  int i;
-
-  for (i=0; i<npoints; i++) fprintf(stream,"%g %g\n",gridx[i],gridy[i]);
-}
 
 static const char *cartInfo =
   ("very lightly Teem-fied cart, "
@@ -92,13 +83,12 @@ main(int argc, const char *argv[])
   double *gridx,*gridy;  // Array for grid points
   double **rho;          // Initial population density
   FILE *infp;
-  FILE *outfp;
 
   const char *me = argv[0];
   airArray *mop = airMopNew();
   hestParm *hparm = hestParmNew();
   hestOpt *hopt = NULL;
-  char *inName, *outName;
+  char *err, *inName, *outName;
   airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
   hestOptAdd(&hopt, NULL, "xsize", airTypeInt, 1, 1, &xsize, NULL,
              "xsize");
@@ -107,7 +97,7 @@ main(int argc, const char *argv[])
   hestOptAdd(&hopt, NULL, "inputfile", airTypeString, 1, 1, &inName, NULL,
              "input filename");
   hestOptAdd(&hopt, NULL, "outputfile", airTypeString, 1, 1, &outName, NULL,
-             "output filename");
+             "output filename; should end with .nrrd");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
                  me, cartInfo, AIR_TRUE, AIR_TRUE, AIR_TRUE);
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestOptFree), airMopAlways);
@@ -115,49 +105,65 @@ main(int argc, const char *argv[])
 
   infp = fopen(inName,"r");
   if (infp==NULL) {
-    fprintf(stderr,"%s: unable to open file `%s'\n", me, inName);
+    fprintf(stderr,"%s: unable to open file \"%s\"\n", me, inName);
+    airMopError(mop);
     exit(4);
   }
   airMopAdd(mop, infp, (airMopper)airFclose, airMopAlways);
-  outfp = fopen(outName,"w");
-  if (outfp==NULL) {
-    fprintf(stderr,"%s: unable to open file `%s'\n", me, outName);
-    exit(5);
-  }
-  airMopAdd(mop, outfp, (airMopper)airFclose, airMopAlways);
 
   /* Allocate space for the cartogram code to use */
 
   cartContext *ctx = cartContextNew();
   airMopAdd(mop, ctx, (airMopper)cartContextNix, airMopAlways);
   cart_makews(ctx, xsize,ysize);
+  fprintf(stderr, "%s: x,y size = %d %d\n", me, xsize, ysize);
 
   /* Read in the population data, transform it, then destroy it again */
-
   rho = cart_dmalloc(xsize,ysize);
   if (readpop(infp,rho,xsize,ysize)) {
-    fprintf(stderr,"%s: density file contains too few or incorrect data\n", me);
+    fprintf(stderr, "%s: density file contains too few or incorrect data\n", me);
+    airMopError(mop);
     exit(6);
   }
   cart_transform(ctx,rho,xsize,ysize);
   cart_dfree(rho);
 
   /* Create the grid of points */
-
-  gridx = malloc((xsize+1)*(ysize+1)*sizeof(double));
-  gridy = malloc((xsize+1)*(ysize+1)*sizeof(double));
+  Nrrd *ngridx = nrrdNew();
+  airMopAdd(mop, ngridx, (airMopper)nrrdNuke, airMopAlways);
+  Nrrd *ngridy = nrrdNew();
+  airMopAdd(mop, ngridy, (airMopper)nrrdNuke, airMopAlways);
+  size_t gsize[2] = {xsize+1, ysize+1};
+  if (nrrdMaybeAlloc_nva(ngridx, nrrdTypeDouble, 2, gsize) ||
+      nrrdMaybeAlloc_nva(ngridy, nrrdTypeDouble, 2, gsize)) {
+    airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+    fprintf(stderr, "%s: problem allocating grid: %s", me, err);
+    airMopError(mop);
+    exit(7);
+  }
+  gridx = (double*)(ngridx->data);
+  gridy = (double*)(ngridy->data);
   creategrid(gridx,gridy,xsize,ysize);
 
   /* Make the cartogram */
+  double time0 = airTime();
   cart_makecart(ctx,gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
+  double time1 = airTime();
+  printf("%s:              ... %g secs\n", me, time1-time0);
 
-  /* Write out the final positions of the grid points */
-  writepoints(outfp,gridx,gridy,(xsize+1)*(ysize+1));
+  Nrrd *ngrid = nrrdNew();
+  airMopAdd(mop, ngrid, (airMopper)nrrdNuke, airMopAlways);
+  const Nrrd *njoin[2] = {ngridx, ngridy};
+  if (nrrdJoin(ngrid, njoin, 2, 0, AIR_TRUE) ||
+      nrrdSave(outName, ngrid, NULL)) {
+    airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+    fprintf(stderr, "%s: problem creating or saving output grid: %s", me, err);
+    airMopError(mop);
+    exit(7);
+  }
 
   /* Free up the allocated space */
   cart_freews(ctx,xsize,ysize);
-  free(gridx);
-  free(gridy);
 
   airMopOkay(mop);
   return 0;

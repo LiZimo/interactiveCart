@@ -1,8 +1,0 @@
-NRRD0004
-dimension: 2
-sizes: 1024 512
-type: short
-encoding: raw
-endian: little
-byte skip: 1390
-data file: cartInputContiguous.tif

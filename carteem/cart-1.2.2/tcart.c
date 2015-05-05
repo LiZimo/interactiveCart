@@ -299,8 +299,7 @@ void cart_velocity(const cartContext *ctx,
 /* Function to integrate 2h time into the future two different ways using
  * four-order Runge-Kutta and compare the differences for the purposes of
  * the adaptive step size.  Parameters are:
- *   *pointx = array of x-coords of points
- *   *pointy = array of y-coords of points
+ *   *pointxy = array of (x,y)-coords of points
  *   npoints = number of points
  *   t = current time, i.e., start time of these two steps
  *   h = delta t
@@ -313,7 +312,7 @@ void cart_velocity(const cartContext *ctx,
  */
 
 void cart_twosteps(cartContext *ctx,
-                   double *pointx, double *pointy, int npoints,
+                   double *pointxy, int npoints,
 		   double t, double h, int s, int xsize, int ysize,
 		   double *errorp, double *drp, int *spp)
 {
@@ -364,8 +363,8 @@ void cart_twosteps(cartContext *ctx,
 
   for (p=0; p<npoints; p++) {
 
-    rx1 = pointx[p];
-    ry1 = pointy[p];
+    rx1 = pointxy[0 + 2*p];
+    ry1 = pointxy[1 + 2*p];
 
     /* Do the big combined (2h) RK step */
 
@@ -451,8 +450,8 @@ void cart_twosteps(cartContext *ctx,
     if (ry3<0) ry3 = 0;
     else if (ry3>ysize) ry3 = ysize;
 
-    pointx[p] = rx3;
-    pointy[p] = ry3;
+    pointxy[0 + 2*p] = rx3;
+    pointxy[1 + 2*p] = ry3;
 
   }
 
@@ -478,7 +477,7 @@ int cart_complete(double t)
 /* Function to do the transformation of the given set of points
  * to the cartogram */
 
-void cart_makecart(cartContext *ctx, double *pointx, double *pointy, int npoints,
+void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
 		   int xsize, int ysize, double blur)
 {
   int i;
@@ -505,7 +504,7 @@ void cart_makecart(cartContext *ctx, double *pointx, double *pointy, int npoints
 
     /* Do a combined (triple) integration step */
 
-    cart_twosteps(ctx,pointx,pointy,npoints,t,h,s,xsize,ysize,&error,&dr,&sp);
+    cart_twosteps(ctx,pointxy,npoints,t,h,s,xsize,ysize,&error,&dr,&sp);
 
     /* Increase the time by 2h and rotate snapshots */
 
