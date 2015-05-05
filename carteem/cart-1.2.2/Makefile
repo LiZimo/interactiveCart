@@ -29,28 +29,27 @@ LPATH = -L$(TEEM)/lib -L/usr/local/lib
 
 # HEY still have to package as library                     
 
-all: cart tcart
-# all: cart cart2 cartv cart2v
+all: ocart tcart
 
 .c.o:
 	$(CC) -c $(CFLAGS) $(IPATH) -o $@ $<
 
-cart:main.o cart.o
-	$(CC) $(CFLAGS) $(LPATH) $(LIBOPTS) -o cart main.o cart.o $(LIBS)
+ocart: omain.o ocart.o
+	$(CC) $(CFLAGS) $(LPATH) $(LIBOPTS) -o ocart omain.o ocart.o $(LIBS)
 
-tcart:tmain.o cart.o
-	$(CC) $(CFLAGS) $(LPATH) $(LIBOPTS) -o tcart tmain.o cart.o $(LIBS)
+tcart: tmain.o tcart.o
+	$(CC) $(CFLAGS) $(LPATH) $(LIBOPTS) -o tcart tmain.o tcart.o $(LIBS)
 
-cart2:main.o cart2.o
-	$(CC) $(CFLAGS) $(LIBOPTS) -o cart2 main.o cart2.o $(LIBS)
-
-cartv:main.o cartv.o
-	$(CC) $(CFLAGS) $(LIBOPTS) -o cartv main.o cartv.o $(LIBS)
-
-cart2v:main.o cart2v.o
-	$(CC) $(CFLAGS) $(LIBOPTS) -o cart2v main.o cart2v.o $(LIBS)
+# all: cart cart2 cartv cart2v
+#cart2:main.o cart2.o
+#	$(CC) $(CFLAGS) $(LIBOPTS) -o cart2 main.o cart2.o $(LIBS)
+#
+#cartv:main.o cartv.o
+#	$(CC) $(CFLAGS) $(LIBOPTS) -o cartv main.o cartv.o $(LIBS)
+#
+#cart2v:main.o cart2v.o
+#	$(CC) $(CFLAGS) $(LIBOPTS) -o cart2v main.o cart2v.o $(LIBS)
 
 clean:
-	rm -fv *.o
-
+	rm -fv *.o ocart tcart
 

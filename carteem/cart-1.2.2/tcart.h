@@ -31,8 +31,7 @@ typedef struct {
   double *fftrho;        // FT of initial density
   double *fftexpt;       // FT of density at time t
 
-  double **vxt[5];       // x-velocity at time t
-  double **vyt[5];       // y-velocity at time t
+  double *vxyt[5];        // (x,y) velocity at time t
 
   double *expky;         // Array needed for the Gaussian convolution
 
