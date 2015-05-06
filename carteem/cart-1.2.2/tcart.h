@@ -27,13 +27,18 @@
 #define PI 3.1415926535897932384626
 
 typedef struct {
+  int savesnaps;         // save snapshots
+  int verbosity;
   double *rhot[5];       // Pop density at time t (five snaps needed)
   double *fftrho;        // FT of initial density
   double *fftexpt;       // FT of density at time t
 
+  /* GLK removed previous the "2D array" structure of vxt and vyt, which
+     halved the number of memory loads in their use, and also interleaved
+     vxt and vyt arrays, considering locality */
   double *vxyt[5];        // (x,y) velocity at time t
 
-  double *expky;         // Array needed for the Gaussian convolution
+  double *preexp;         // Array needed for the Gaussian convolution
 
   fftw_plan rhotplan[5]; // Plan for rho(t) back-transform at time t
 } cartContext;
@@ -42,14 +47,12 @@ extern cartContext *cartContextNew();
 extern cartContext *cartContextNix(cartContext *ctx);
 
 extern void cart_makews(cartContext *ctx, int xsize, int ysize);
-extern void cart_freews(cartContext *ctx, int xsize, int ysize);
+extern void cart_freews(cartContext *ctx);
 
-extern void cart_transform(cartContext *ctx, double **userrho, int xsize, int ysize);
 extern void cart_forward(cartContext *ctx, double *rho, int xsize, int ysize);
 
-extern double** cart_dmalloc(int xsize, int ysize);
-extern void cart_dfree(double **userrho);
 extern void cart_makecart(cartContext *ctx,
+                          /* GLK interleaved pointx and pointy arrays */
                           double *pointxy, int npoints,
                           int xsize, int ysize, double blur);
 

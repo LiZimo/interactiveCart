@@ -93,6 +93,9 @@ main(int argc, const char *argv[]) {
   Nrrd *nrho;
   char *err, *outName, *rgName;
   unsigned int repeats;
+
+  ctx = cartContextNew();
+  airMopAdd(mop, ctx, (airMopper)cartContextNix, airMopAlways);
   airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
   hestOptAdd(&hopt, "i", "rho", airTypeOther, 1, 1, &nrho, NULL,
              "input population data", NULL, NULL, nrrdHestNrrd);
@@ -104,6 +107,10 @@ main(int argc, const char *argv[]) {
              "if given a filename with this option, the reference grid "
              "(with no displacement from the cartogram) is saved here, "
              "to simplify inspection of cartogram results. ");
+  hestOptAdd(&hopt, "v", "verbosity", airTypeInt, 1, 1, &(ctx->verbosity), "0",
+             "level of printf verbosity");
+  hestOptAdd(&hopt, "s", NULL, airTypeInt, 0, 0, &(ctx->savesnaps), NULL,
+             "save snapshots of the density computed via fft");
   hestOptAdd(&hopt, "o", "fname", airTypeString, 1, 1, &outName, NULL,
              "output filename");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
@@ -118,11 +125,8 @@ main(int argc, const char *argv[]) {
     return 1;
   }
   double *rho = (double*)nrho->data;
-  int xsize = (int)nrho->axis[1].size;
-  int ysize = (int)nrho->axis[0].size;
-
-  ctx = cartContextNew();
-  airMopAdd(mop, ctx, (airMopper)cartContextNix, airMopAlways);
+  int xsize = (int)nrho->axis[0].size;
+  int ysize = (int)nrho->axis[1].size;
 
   /* Allocate space for the cartogram code to use */
   cart_makews(ctx,xsize,ysize);

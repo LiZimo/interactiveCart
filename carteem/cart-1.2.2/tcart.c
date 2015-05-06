@@ -8,14 +8,15 @@
 /* Globals */
 
 #include "tcart.h"
+#include "teem/meet.h"
 
 cartContext *
 cartContextNew() {
   cartContext *ctx;
   unsigned int si;
-  // ctx = AIR_CALLOC(1, cartContext);
   ctx = (cartContext *)(calloc(1, sizeof(cartContext)));
   if (ctx) {
+    ctx->savesnaps = AIR_FALSE;
     for (si=0; si<4; si++) {
       ctx->rhot[si] = NULL;
       ctx->vxyt[si] = NULL;
@@ -23,7 +24,7 @@ cartContextNew() {
     }
     ctx->fftrho = NULL;
     ctx->fftexpt = NULL;
-    ctx->expky = NULL;
+    ctx->preexp = NULL;
   }
   return ctx;
 }
@@ -36,33 +37,6 @@ cartContextNix(cartContext *ctx) {
   }
   return NULL;
 }
-
-
-/* Function to make space for the density array.  This is done in such a
- * way as to allow rho to be accessed either as a single block (for FFTW)
- * or as a normal double-indexed array (for regular use) */
-
-double** cart_dmalloc(int xsize, int ysize)
-{
-  int ix;
-  double **userrho;
-
-  userrho = malloc(xsize*sizeof(double*));
-  *userrho = fftw_malloc(xsize*ysize*sizeof(double));
-  for (ix=1; ix<xsize; ix++) userrho[ix] = *userrho + ix*ysize;
-
-  return userrho;
-}
-
-
-/* Function to free space for the density array */
-
-void cart_dfree(double **userrho)
-{
-  fftw_free(*userrho);
-  free(userrho);
-}
-
 
 /* Function to allocate space for the global arrays */
 
@@ -81,12 +55,12 @@ void cart_makews(cartContext *ctx, int xsize, int ysize)
     ctx->vxyt[s] = (double*)malloc(2*(xsize+1)*(ysize+1)*sizeof(double));
   }
 
-  ctx->expky = malloc(ysize*sizeof(double));
+  ctx->preexp = malloc(xsize*sizeof(double));
 
   /* Make plans for the back transforms */
 
   for (i=0; i<5; i++) {
-    ctx->rhotplan[i] = fftw_plan_r2r_2d(xsize,ysize,ctx->fftexpt,ctx->rhot[i],
+    ctx->rhotplan[i] = fftw_plan_r2r_2d(ysize,xsize,ctx->fftexpt,ctx->rhot[i],
                                         FFTW_REDFT01,FFTW_REDFT01,FFTW_MEASURE);
   }
 }
@@ -95,7 +69,7 @@ void cart_makews(cartContext *ctx, int xsize, int ysize)
 /* Function to free up space for the global arrays and destroy the FFT
  * plans */
 
-void cart_freews(cartContext *ctx, int xsize, int ysize)
+void cart_freews(cartContext *ctx)
 {
   int s,i;
 
@@ -107,7 +81,7 @@ void cart_freews(cartContext *ctx, int xsize, int ysize)
     free(ctx->vxyt[s]);
   }
 
-  free(ctx->expky);
+  free(ctx->preexp);
 
   for (i=0; i<5; i++) fftw_destroy_plan(ctx->rhotplan[i]);
 }
@@ -115,26 +89,16 @@ void cart_freews(cartContext *ctx, int xsize, int ysize)
 
 /* Function to calculate the discrete cosine transform of the input data.
  * assumes its input is an fftw_malloced array in column-major form with
- * size xsize*ysize */
-
+ * size xsize*ysize
+ * NOTE: This is done only once, so efficiency is not a concern */
 void cart_forward(cartContext *ctx, double *rho, int xsize, int ysize)
 {
   fftw_plan plan;
 
-  plan = fftw_plan_r2r_2d(xsize,ysize,rho,ctx->fftrho,
+  plan = fftw_plan_r2r_2d(ysize,xsize,rho,ctx->fftrho,
 			  FFTW_REDFT10,FFTW_REDFT10,FFTW_ESTIMATE);
   fftw_execute(plan);
   fftw_destroy_plan(plan);
-}
-
-
-/* Function to calculate the discrete cosine transform of the input data.
- * This function is just a wrapper for forward(), so the user doesn't
- * need to see the fftw-format density array */
-
-void cart_transform(cartContext *ctx, double **userrho, int xsize, int ysize)
-{
-  cart_forward(ctx, *userrho,xsize,ysize);
 }
 
 
@@ -146,30 +110,52 @@ void cart_transform(cartContext *ctx, double **userrho, int xsize, int ysize)
 
 void cart_density(cartContext *ctx, double t, int s, int xsize, int ysize)
 {
+  static const char me[]="cart_density";
   int ix,iy;
   double kx,ky;
-  double expkx;
+  double expky;
+  static unsigned int snapi = 0;
 
-  /* Calculate the expky array, to save time in the next part */
+  /* Calculate the preexp array, to save time in the next part */
 
-  for (iy=0; iy<ysize; iy++) {
-    ky = PI*iy/ysize;
-    ctx->expky[iy] = exp(-ky*ky*t);
+  for (ix=0; ix<xsize; ix++) {
+    kx = PI*ix/xsize;
+    ctx->preexp[ix] = exp(-kx*kx*t);
   }
 
   /* Multiply the FT of the density by the appropriate factors */
 
-  for (ix=0; ix<xsize; ix++) {
-    kx = PI*ix/xsize;
-    expkx = exp(-kx*kx*t);
-    for (iy=0; iy<ysize; iy++) {
-      ctx->fftexpt[ix*ysize+iy] = expkx*ctx->expky[iy]*ctx->fftrho[ix*ysize+iy];
+  for (iy=0; iy<ysize; iy++) {
+    ky = PI*iy/ysize;
+    expky = exp(-ky*ky*t);
+    for (ix=0; ix<xsize; ix++) {
+      ctx->fftexpt[ix + xsize*iy] = expky*ctx->preexp[ix]*ctx->fftrho[ix + xsize*iy];
     }
   }
 
   /* Perform the back-transform */
-
   fftw_execute(ctx->rhotplan[s]);
+  if (ctx->savesnaps) {
+    char fname[128], key[128], val[128];
+    fprintf(stderr, "%s(%g,%d)\n", me, t, s);
+    sprintf(fname, "snaprho-%04u.nrrd", snapi);
+    Nrrd *nsnap = nrrdNew();
+    sprintf(key, "difftime");
+    sprintf(val, "%g", t);
+    if (nrrdWrap_va(nsnap, ctx->rhot[s], nrrdTypeDouble, 2,
+                    (size_t)xsize, (size_t)ysize)
+        || nrrdKeyValueAdd(nsnap, key, val)
+        || nrrdSave(fname, nsnap, NULL)) {
+      char *err = biffGetDone(NRRD);
+      fprintf(stderr, "%s: couldn't wrap and save: %s\n", me, err);
+      free(err);
+    }
+    if (ctx->verbosity > 1) {
+      fprintf(stderr, "%s: saved %s\n", me, fname);
+    }
+    nrrdNix(nsnap);
+    snapi++;
+  }
 }
 
 
@@ -178,11 +164,13 @@ void cart_density(cartContext *ctx, double t, int s, int xsize, int ysize)
 
 void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
 {
+  static const char me[]="cart_vgrid";
   int ix,iy;
   double r00,r10;
   double r01,r11;
   double mid;
   int xsp=xsize+1;
+  static unsigned int snapi = 0;
 
   /* Do the corners */
   ctx->vxyt[s][0 + 2*(0     + xsp*0)]     = ctx->vxyt[s][1 + 2*(0     + xsp*0)] = 0.0;
@@ -192,58 +180,75 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
 
   /* Do the top border */
 
-  r11 = ctx->rhot[s][0];
+  r11 = ctx->rhot[s][0 + xsize*0];
   for (ix=1; ix<xsize; ix++) {
     r01 = r11;
-    r11 = ctx->rhot[s][ix*ysize];
+    r11 = ctx->rhot[s][ix + xsize*0];
     ctx->vxyt[s][0 + 2*(ix + xsp*0)] = -2*(r11-r01)/(r11+r01);
     ctx->vxyt[s][1 + 2*(ix + xsp*0)] = 0.0;
   }
 
   /* Do the bottom border */
 
-  r10 = ctx->rhot[s][ysize-1];
+  r10 = ctx->rhot[s][0 + xsize*(ysize-1)];
   for (ix=1; ix<xsize; ix++) {
     r00 = r10;
-    r10 = ctx->rhot[s][ix*ysize+ysize-1];
+    r10 = ctx->rhot[s][ix + xsize*(ysize-1)];
     ctx->vxyt[s][0 + 2*(ix + xsp*ysize)] = -2*(r10-r00)/(r10+r00);
     ctx->vxyt[s][1 + 2*(ix + xsp*ysize)] = 0.0;
   }
 
   /* Left edge */
 
-  r11 = ctx->rhot[s][0];
+  r11 = ctx->rhot[s][0 + xsize*0];
   for (iy=1; iy<ysize; iy++) {
     r10 = r11;
-    r11 = ctx->rhot[s][iy];
+    r11 = ctx->rhot[s][0 + xsize*iy];
     ctx->vxyt[s][0 + 2*(0 + xsp*iy)] = 0.0;
     ctx->vxyt[s][1 + 2*(0 + xsp*iy)] = -2*(r11-r10)/(r11+r10);
   }
 
   /* Right edge */
 
-  r01 = ctx->rhot[s][(xsize-1)*ysize];
+  r01 = ctx->rhot[s][xsize-1];
   for (iy=1; iy<ysize; iy++) {
     r00 = r01;
-    r01 = ctx->rhot[s][(xsize-1)*ysize+iy];
+    r01 = ctx->rhot[s][xsize-1 + xsize*iy];
     ctx->vxyt[s][0 + 2*(xsize + xsp*iy)] = 0.0;
     ctx->vxyt[s][1 + 2*(xsize + xsp*iy)] = -2*(r01-r00)/(r01+r00);
   }
 
   /* Now do all the points in the middle */
-
-  for (ix=1; ix<xsize; ix++) {
-    r01 = ctx->rhot[s][(ix-1)*ysize];
-    r11 = ctx->rhot[s][ix*ysize];
-    for (iy=1; iy<ysize; iy++) {
-      r00 = r01;
-      r10 = r11;
-      r01 = ctx->rhot[s][(ix-1)*ysize+iy];
-      r11 = ctx->rhot[s][ix*ysize+iy];
+  for (iy=1; iy<ysize; iy++) {
+    r10 = ctx->rhot[s][0 + xsize*(iy-1)];
+    r11 = ctx->rhot[s][0 + xsize*iy];
+    for (ix=1; ix<xsize; ix++) {
+      r00 = r10;
+      r01 = r11;
+      r10 = ctx->rhot[s][ix + xsize*(iy-1)];
+      r11 = ctx->rhot[s][ix + xsize*iy];
       mid = r10 + r00 + r11 + r01;
       ctx->vxyt[s][0 + 2*(ix + xsp*iy)] = -2*(r10-r00+r11-r01)/mid;
       ctx->vxyt[s][1 + 2*(ix + xsp*iy)] = -2*(r01-r00+r11-r10)/mid;
     }
+  }
+
+  if (ctx->savesnaps) {
+    char fname[128];
+    sprintf(fname, "snapvel-%04u.nrrd", snapi);
+    Nrrd *nsnap = nrrdNew();
+    if (nrrdWrap_va(nsnap, ctx->vxyt[s], nrrdTypeDouble, 3,
+                    (size_t)2, (size_t)(xsize+1), (size_t)(ysize+1))
+        || nrrdSave(fname, nsnap, NULL)) {
+      char *err = biffGetDone(NRRD);
+      fprintf(stderr, "%s: couldn't wrap and save: %s\n", me, err);
+      free(err);
+    }
+    if (ctx->verbosity > 1) {
+      fprintf(stderr, "%s: saved %s\n", me, fname);
+    }
+    nrrdNix(nsnap);
+    snapi++;
   }
 }
 
@@ -344,17 +349,15 @@ void cart_twosteps(cartContext *ctx,
   s4 = (s+4)%5;
 
   /* Calculate the density field for the four new time slices */
-
+  /* GLK interleaved density and vgrid calls, considering locality;
+     but it wasn't the bottleneck */
   cart_density(ctx,t+0.5*h,s1,xsize,ysize);
-  cart_density(ctx,t+1.0*h,s2,xsize,ysize);
-  cart_density(ctx,t+1.5*h,s3,xsize,ysize);
-  cart_density(ctx,t+2.0*h,s4,xsize,ysize);
-
-  /* Calculate the resulting velocity grids */
-
   cart_vgrid(ctx,s1,xsize,ysize);
+  cart_density(ctx,t+1.0*h,s2,xsize,ysize);
   cart_vgrid(ctx,s2,xsize,ysize);
+  cart_density(ctx,t+1.5*h,s3,xsize,ysize);
   cart_vgrid(ctx,s3,xsize,ysize);
+  cart_density(ctx,t+2.0*h,s4,xsize,ysize);
   cart_vgrid(ctx,s4,xsize,ysize);
 
   /* Do all three RK steps for each point in turn */
@@ -480,10 +483,11 @@ int cart_complete(double t)
 void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
 		   int xsize, int ysize, double blur)
 {
+  static const char me[]="cart_makecart";
   int i;
   int s,sp;
   int step;
-  int done;
+  int done, loopi;
   double t,h;
   double error,dr;
   double desiredratio;
@@ -499,7 +503,7 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
   step = 0;
   t = 0.5*blur*blur;
   h = INITH;
-
+  loopi = 0;
   do {
 
     /* Do a combined (triple) integration step */
@@ -516,8 +520,21 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
      * the two-step process is twice the target for an individual step */
 
     desiredratio = pow(2*TARGETERROR/error,0.2);
-    if (desiredratio>MAXRATIO) h *= MAXRATIO;
-    else h *= desiredratio;
+    if (ctx->verbosity) {
+      printf("%s(%d): h=%g, error=%g (vs %g) -> desiredratio=%g ",
+             me, loopi, h, error, TARGETERROR, desiredratio);
+    }
+    if (desiredratio>MAXRATIO) {
+      h *= MAXRATIO;
+      if (ctx->verbosity) {
+        printf("> %g -> h=%g\n", MAXRATIO, h);
+      }
+    } else {
+      h *= desiredratio;
+      if (ctx->verbosity) {
+        printf("<= %g -> h=%g\n", MAXRATIO, h);
+      }
+    }
 
     done = cart_complete(t);
 #ifdef PERCENT
@@ -529,7 +546,7 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
     for (i=done/2; i<50; i++) fprintf(stderr," ");
     fprintf(stderr,"|\r");
 #endif
-
+   loopi++;
     /* If no point moved then we are finished */
 
   } while (dr>0.0);
