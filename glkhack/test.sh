@@ -28,7 +28,7 @@ T2N="../code/tiff2nhdr"
 
 ### reproject and rasterize json files
 # if false: skip; if true: do it
-if true; then
+if false; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
   Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL"
   Doo "rm -f county.json; ogr2ogr -f geojson -t_srs \"$PROJ\" county.json $COUNT_OUTL"
@@ -77,15 +77,15 @@ if true; then
   PX=$[($SX - ${SZA[1]})/2]
   PY=$[($SY - ${SZA[2]})/2]
 
-  unu pad -i cart-in0.nrrd -min -$PX -$PY -max m+$[$SX-1] m+$[$SY-1] | unu swap -a 0 1 | unu convert -t double -o cart-in.nrrd
+  unu pad -i cart-in0.nrrd -min -$PX -$PY -max m+$[$SX-1] m+$[$SY-1] | unu convert -t double -o cart-in.nrrd
+
+  echo "======= SX=$SX  SY=$SY"
+  Doo "unu save -i cart-in.nrrd -f nrrd -e ascii | unu data - > cart-in.txt"
+
+  VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
+  OCART="../carteem/cart-1.2.2/ocart"
+  TCART="../carteem/cart-1.2.2/tcart"
+  Doo "$OCART $SX $SY cart-in.txt ocart-out.nrrd"
+  Doo "$TCART -i cart-in.nrrd  -o tcart-out.nrrd -r 1 -g refgrid.nrrd"
 fi
-
-echo "======= SX=$SX  SY=$SY"
-Doo "unu swap -i cart-in.nrrd -a 0 1 | unu save -f nrrd -e ascii | unu data - > cart-in.txt"
-
-VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
-OCART="../carteem/cart-1.2.2/ocart"
-TCART="../carteem/cart-1.2.2/tcart"
-Doo "$OCART $SX $SY cart-in.txt ocart-out.nrrd"
-Doo "$TCART -i cart-in.nrrd -o tcart-out.nrrd -g refgrid.nrrd"
 
