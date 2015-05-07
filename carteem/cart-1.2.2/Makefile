@@ -24,8 +24,8 @@ CC = gcc
 LIBOPTS =
 LIBS = -lteem -lfftw3 -lpng -lz -lm
 #LIBS = -lfftw3 -lm
-IPATH = -I$(TEEM)/include
-LPATH = -L$(TEEM)/lib -L/usr/local/lib
+IPATH = -I$(TEEM)/include -I/home/zimo/include
+LPATH = -L$(TEEM)/lib -L/home/zimo/lib
 
 # HEY still have to package as library                     
 
