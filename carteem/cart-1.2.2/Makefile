@@ -24,8 +24,13 @@ CC = gcc
 LIBOPTS =
 LIBS = -lteem -lfftw3 -lpng -lz -lm
 #LIBS = -lfftw3 -lm
-IPATH = -I$(TEEM)/include -I/home/zimo/include
-LPATH = -L$(TEEM)/lib -L/home/zimo/lib
+# with the "+=" you can, in your shell
+#  export LPATH=-L/home/zimo/lib
+#  export IPATH=-L/home/zimo/include
+# and then the makefile will augment those
+# (without having to include user-id-specific paths in this Makefile)
+IPATH += -I$(TEEM)/include
+LPATH += -L$(TEEM)/lib
 
 # HEY still have to package as library                     
 
