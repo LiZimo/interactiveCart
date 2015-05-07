@@ -43,9 +43,14 @@ typedef struct {
   fftw_plan rhotplan[5]; // Plan for rho(t) back-transform at time t
 } cartContext;
 
+/* HEY cartContextNew() should take xsize, ysize, and
+   do the work of cart_makews */
 extern cartContext *cartContextNew();
+/* HEY this should do the work of cart_freews */
 extern cartContext *cartContextNix(cartContext *ctx);
 
+/* HEY the xsize,ysize arguments to these functions are dumb;
+   that should be inside the cartContext */
 extern void cart_makews(cartContext *ctx, int xsize, int ysize);
 extern void cart_freews(cartContext *ctx);
 

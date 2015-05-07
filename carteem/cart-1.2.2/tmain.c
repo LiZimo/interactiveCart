@@ -26,27 +26,11 @@
 #define OFFSET 0.005
 
 
-/* Function to read population data into the array rho.  Returns 1 if there
- * was a problem, zero otherwise */
-/* GLK: Actually, ha ha no, now its just about adding OFFSET*mean */
-int readpop(/* FILE *stream, double **rho */ double *rho, int xsize, int ysize)
-{
+int addOffset(double *rho, int xsize, int ysize) {
   int ii;
   int n;
   double mean;
   double sum=0.0;
-
-  /*
-    NOTE that reading values from stream, X is the faster axis,
-    but when stored in memory, X is the slower axis!
-  for (iy=0; iy<ysize; iy++) {
-    for (ix=0; ix<xsize; ix++) {
-      n = fscanf(stream,"%lf",&rho[ix][iy]);
-      if (n!=1) return 1;
-      sum += rho[ix][iy];
-    }
-  }
-  */
 
   for (ii=0; ii<xsize*ysize; ii++) {
     sum += rho[ii];
@@ -62,8 +46,7 @@ int readpop(/* FILE *stream, double **rho */ double *rho, int xsize, int ysize)
 
 /* Function to make the grid of points */
 
-void creategrid(double *gridxy, int xsize, int ysize)
-{
+void creategrid(double *gridxy, int xsize, int ysize) {
   int ix,iy;
   int i=0;
 
@@ -76,9 +59,70 @@ void creategrid(double *gridxy, int xsize, int ysize)
   }
 }
 
+void
+findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig) {
+
+  /* ZIMO: make this smarter: sizePad[i] should be the
+     smallest N >= 2*sizeOrig[i] which is a product of
+     some power of 2 and some power of 3 */
+  sizePad[0] = 2*sizeOrig[0];
+  sizePad[1] = 2*sizeOrig[1];
+}
+
+int
+applySubst(double *avg, Nrrd *nout, const Nrrd *nsub, const Nrrd *nmap) {
+  static const char me[]="applySubst";
+  /* these types are checked in main() below */
+  const float *sub = (const float*)(nsub->data);
+  const unsigned short *map = (const unsigned short *)(nmap->data);
+  double *out = (double*)(nout->data);
+  unsigned int sx = (unsigned int)nmap->axis[0].size;
+  unsigned int sy = (unsigned int)nmap->axis[1].size;
+  unsigned int ss = (unsigned int)nsub->axis[1].size;
+  unsigned int ii, jj, nn = sx*sy;
+  unsigned int posnum;
+  double possum;
+
+  posnum = 0;
+  possum = 0.0;
+  for (ii=0; ii<nn; ii++) {
+    unsigned short mval = map[ii];
+    double oval=AIR_NAN;
+    /* yea, a slow O(n) search, for every pixel;
+       this should be optimized if it becomes a bottleneck */
+    for (jj=0; jj<ss; jj++) {
+      if (mval == (unsigned short)(sub[0 + 2*jj])) {
+        oval = sub[1 + 2*jj];
+        break;
+      }
+    }
+    if (ss==jj) {
+      fprintf(stderr, "%s: map[%u] value %u not found in subst table\n",
+              me, ii, mval);
+      return 1;
+    }
+    out[ii] = oval;
+    if (oval >= 0) {
+      posnum++;
+      possum += oval;
+    } else {
+      if (-1 != oval) {
+        fprintf(stderr, "%s: (sub[%u]) map[%u]=%u --> %g < 0 but != -1\n",
+                me, jj, ii, mval, oval);
+        return 1;
+      }
+    }
+  }
+  if (!posnum) {
+    fprintf(stderr, "%s: produced no positive values\n", me);
+    return 1;
+  }
+  *avg = possum/posnum;
+  return 0;
+}
 
 static const char *cartInfo =
-  ("heavily Teem-fied cart, "
+  ("heavily Teem-fied and augmented \"cart\", "
    "based on http://www-personal.umich.edu/~mejn/cart/.");
 
 int
@@ -90,26 +134,33 @@ main(int argc, const char *argv[]) {
   airArray *mop = airMopNew();
   hestParm *hparm = hestParmNew();
   hestOpt *hopt = NULL;
-  Nrrd *nrho;
-  char *err, *outName, *rgName;
+  Nrrd *nmap, *nsub, *nrho;
+  char *err, *rhoName, *outName;
   unsigned int repeats;
+  double temm[4];
 
   ctx = cartContextNew();
   airMopAdd(mop, ctx, (airMopper)cartContextNix, airMopAlways);
   airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
-  hestOptAdd(&hopt, "i", "rho", airTypeOther, 1, 1, &nrho, NULL,
-             "input population data", NULL, NULL, nrrdHestNrrd);
+  hestOptAdd(&hopt, "i", "map", airTypeOther, 1, 1, &nmap, NULL,
+             "output of gdal_rasterize", NULL, NULL, nrrdHestNrrd);
+  hestOptAdd(&hopt, "te", "xmin ymin xmax ymax", airTypeDouble, 4, 4,
+             temm, NULL, "the -te args given to gdal_rasterize");
+  hestOptAdd(&hopt, "s", "subst", airTypeOther, 1, 1, &nsub, NULL,
+             "substitution table, to apply to \"-i\" map to generate "
+             "the initial density map", NULL, NULL, nrrdHestNrrd);
+  hestOptAdd(&hopt, "or", "fname", airTypeString, 1, 1, &rhoName, "",
+             "if a filename is given here, the computed density map "
+             "is saved to this file, to allow inspecting the input "
+             "to the diffusion cartogram algorithm");
   hestOptAdd(&hopt, "r", "repeats", airTypeUInt, 1, 1, &repeats, "1",
              "number of times to re-run the computation, just so "
              "that it takes longer and provides an easier target "
-             "for profiling tools");
-  hestOptAdd(&hopt, "g", "gridfile", airTypeString, 1, 1, &rgName, "",
-             "if given a filename with this option, the reference grid "
-             "(with no displacement from the cartogram) is saved here, "
-             "to simplify inspection of cartogram results. ");
+             "for profiling tools. Output is not saved until "
+             "final iteration.");
   hestOptAdd(&hopt, "v", "verbosity", airTypeInt, 1, 1, &(ctx->verbosity), "0",
              "level of printf verbosity");
-  hestOptAdd(&hopt, "s", NULL, airTypeInt, 0, 0, &(ctx->savesnaps), NULL,
+  hestOptAdd(&hopt, "snap", NULL, airTypeInt, 0, 0, &(ctx->savesnaps), NULL,
              "save snapshots of the density computed via fft");
   hestOptAdd(&hopt, "o", "fname", airTypeString, 1, 1, &outName, NULL,
              "output filename");
@@ -118,35 +169,121 @@ main(int argc, const char *argv[]) {
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestOptFree), airMopAlways);
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestParseFree), airMopAlways);
 
-  if (!( 2 == nrho->dim && nrrdTypeDouble == nrho->type )) {
-    fprintf(stderr, "%s: want 2-D array of doubles (not %u-D of %s)\n", me,
-            nrho->dim, airEnumStr(nrrdType, nrho->type));
+  if (!( 2 == nmap->dim && nrrdTypeUShort == nmap->type )) {
+    fprintf(stderr, "%s: want map as 2-D %s array (not %u-D %s)\n", me,
+            airEnumStr(nrrdType, nrrdTypeUShort),
+            nmap->dim, airEnumStr(nrrdType, nmap->type));
     airMopError(mop);
     return 1;
   }
+
+  if (!( 2 == nsub->dim && 2 == nsub->axis[0].size
+         && nrrdTypeFloat == nsub->type )) {
+    fprintf(stderr, "%s: want substitution list as 2-D 2-by-N %s array "
+            "(not %u-D %u-by-X %s array)\n", me,
+            airEnumStr(nrrdType, nrrdTypeFloat), nsub->dim,
+            (unsigned int)(nsub->axis[0].size),
+            airEnumStr(nrrdType, nsub->type));
+    airMopError(mop);
+    return 1;
+  }
+  {
+    /* (new block to limit scope of "sub") */
+    float *sub = (float*)(nsub->data);
+    if (!( 0 == sub[0] && -1 == sub[1] )) {
+      fprintf(stderr, "%s: substitution list needs to start with \"0 -1\" "
+              "(not \"%g %g\")\n", me, sub[0], sub[1]);
+      airMopError(mop);
+      return 1;
+    }
+  }
+  /* temm=west south east north
+     .     0    1    2     3 */
+  nmap->axis[0].center = nmap->axis[1].center = nrrdCenterCell;
+  nrrdSpaceSet(nmap, nrrdSpaceRightUp);
+  nmap->spaceOrigin[0] = temm[0];
+  nmap->spaceOrigin[1] = temm[3];
+  nmap->axis[0].spaceDirection[0] = (temm[2]-temm[0])/(nmap->axis[0].size-1);
+  nmap->axis[0].spaceDirection[1] = 0;
+  nmap->axis[1].spaceDirection[0] = 0;
+  nmap->axis[1].spaceDirection[1] = (temm[1]-temm[3])/(nmap->axis[1].size-1);
+  // nrrdSave("map.nrrd", nmap, NULL);
+
+  unsigned int sizeOrig[2], sizePad[2];
+  sizeOrig[0] = (unsigned int)nmap->axis[0].size;
+  sizeOrig[1] = (unsigned int)nmap->axis[1].size;
+  findPadSize(sizePad, sizeOrig);
+  ptrdiff_t padmin[2], padmax[2];
+  padmin[0] = -(ptrdiff_t)((sizePad[0] - sizeOrig[0])/2);
+  padmin[1] = -(ptrdiff_t)((sizePad[1] - sizeOrig[1])/2);
+  padmax[0] = padmin[0] + sizePad[0];
+  padmax[1] = padmin[1] + sizePad[1];
+
+  Nrrd *nprerho = nrrdNew();
+  airMopAdd(mop, nprerho, (airMopper)nrrdNuke, airMopAlways);
+  if (nrrdConvert(nprerho, nmap, nrrdTypeDouble)) {
+    airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+    fprintf(stderr, "%s: problem initializing rho: %s", me, err);
+    airMopError(mop);
+    return 1;
+  }
+  double avgRho;
+  if (applySubst(&avgRho, nprerho, nsub, nmap)) {
+    fprintf(stderr, "%s: problem applying substitution\n", me);
+    airMopError(mop);
+    return 1;
+  }
+  nrho = nrrdNew();
+  airMopAdd(mop, nrho, (airMopper)nrrdNuke, airMopAlways);
+  if (nrrdPad_nva(nrho, nprerho, padmin, padmax,
+                  nrrdBoundaryBleed, 0)) {
+    airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+    fprintf(stderr, "%s: problem padding rho: %s", me, err);
+    airMopError(mop);
+    return 1;
+  }
+  { /* set background to average density */
+    double *rho = (double *)nrho->data;
+    unsigned int ii, nn=(unsigned int)nrrdElementNumber(nrho);
+    for (ii=0; ii<nn; ii++) {
+      if (-1 == rho[ii]) {
+        rho[ii] = avgRho;
+      }
+    }
+  }
+  if (airStrlen(rhoName)) {
+    if (nrrdSave(rhoName, nrho, NULL)) {
+      airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
+      fprintf(stderr, "%s: problem saving density field: %s", me, err);
+      airMopError(mop);
+      return 1;
+    }
+  }
+
   double *rho = (double*)nrho->data;
   int xsize = (int)nrho->axis[0].size;
   int ysize = (int)nrho->axis[1].size;
 
   /* Allocate space for the cartogram code to use */
   cart_makews(ctx,xsize,ysize);
-  fprintf(stderr, "%s: x,y size = %d %d\n", me, xsize, ysize);
 
-  /* add OFFSET*mean */
-  readpop(rho,xsize,ysize);
+  addOffset(rho,xsize,ysize);
   cart_forward(ctx,rho,xsize,ysize);
 
-  /* Create the grid of points */
-  Nrrd *ngridxy = nrrdNew();
-  airMopAdd(mop, ngridxy, (airMopper)nrrdNuke, airMopAlways);
+  /* allocated grid of control points */
+  Nrrd *ngrid = nrrdNew();
+  airMopAdd(mop, ngrid, (airMopper)nrrdNuke, airMopAlways);
+  /* HEY: initialize this by axinsert, padding nrho,
+     and then decrement origin by half a sample,
+     and set centering to node */
   size_t gsize[3] = {2, xsize+1, ysize+1};
-  if (nrrdMaybeAlloc_nva(ngridxy, nrrdTypeDouble, 3, gsize)) {
+  if (nrrdMaybeAlloc_nva(ngrid, nrrdTypeDouble, 3, gsize)) {
     airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
     fprintf(stderr, "%s: problem allocating grid: %s", me, err);
     airMopError(mop);
-    exit(7);
+    return 1;
   }
-  gridxy = (double*)(ngridxy->data);
+  gridxy = (double*)(ngrid->data);
 
   /* Make the cartogram */
   unsigned int repIdx;
@@ -155,14 +292,6 @@ main(int argc, const char *argv[]) {
       printf("%s: %u/%u begins ... \n", me, repIdx, repeats);
     }
     creategrid(gridxy,xsize,ysize);
-    if (!repIdx && strlen(rgName)) {
-      if (nrrdSave(rgName, ngridxy, NULL)) {
-        airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
-        fprintf(stderr, "%s: problem saving reference grid: %s", me, err);
-        airMopError(mop);
-        exit(7);
-      }
-    }
     double time0 = airTime();
     cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
     double time1 = airTime();
@@ -173,15 +302,17 @@ main(int argc, const char *argv[]) {
     }
   }
 
-  if (nrrdSave(outName, ngridxy, NULL)) {
+  /* ZIMO: convert vectors in ngrid, to world-space */
+
+  if (nrrdSave(outName, ngrid, NULL)) {
     airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
-    fprintf(stderr, "%s: problem saving output grid: %s", me, err);
+    fprintf(stderr, "%s: problem saving displacement field: %s", me, err);
     airMopError(mop);
-    exit(7);
+    return 1;
   }
 
   /* Free up the allocated space */
-  cart_freews(ctx,xsize,ysize);
+  cart_freews(ctx);
 
   /* cleanup */
   airMopOkay(mop);
