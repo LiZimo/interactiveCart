@@ -38,6 +38,7 @@ main(int argc, const char* argv[]) {
   hestOpt *hopt = NULL;
 
   char *iname, *oname;
+  int checkoff;
 
   me = argv[0];
   mop = airMopNew();
@@ -46,6 +47,10 @@ main(int argc, const char* argv[]) {
   hparm->elideSingleOtherType = AIR_TRUE;
   hestOptAdd(&hopt, "i", "tiff", airTypeString, 1, 1, &iname, NULL,
              "input tiff image filename");
+  hestOptAdd(&hopt, "co", NULL, airTypeInt, 0, 0, &checkoff, NULL,
+             "check offsets for contiguous strips.  The NRRD "
+             "header currently assumes that the data is in one "
+             "contiguous block.");
   hestOptAdd(&hopt, "o", "nout", airTypeString, 1, 1, &oname, NULL,
              "output nhdr filename");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
@@ -151,26 +156,30 @@ main(int argc, const char* argv[]) {
     airMopError(mop); return 1;
   }
 
+
   long *offset=NULL;
   TIFFGetField(tif, TIFFTAG_STRIPOFFSETS, &offset);
   if (!offset) {
     fprintf(stderr, "%s: didn't get allocate offset array\n", me);
     airMopError(mop); return 1;
   }
-  uint32 stripNum = TIFFNumberOfStrips(tif);
-  uint32 stripSize = TIFFStripSize(tif);
-  if (!( stripNum && stripSize )) {
-    fprintf(stderr, "%s: strip number (%u) or size (%u) seem wrong\n",
-            me, stripNum, stripSize);
-    airMopError(mop); return 1;
-  }
-  uint32 ii;
-  for (ii=0; ii<stripNum-1; ii++) {
-    if (offset[ii+1] - offset[ii] != stripSize) {
-      fprintf(stderr, "%s: strip[%u] start not contiguous with strip[%u] end "
-              "(%lu != %u)\n", me, ii+1, ii,
-              offset[ii+1] - offset[ii], stripSize);
+  if (checkoff) {
+    uint32 stripNum = TIFFNumberOfStrips(tif);
+    uint32 stripSize = TIFFStripSize(tif);
+    if (!( stripNum && stripSize )) {
+      fprintf(stderr, "%s: strip number (%u) or size (%u) seem wrong\n",
+              me, stripNum, stripSize);
       airMopError(mop); return 1;
+    }
+    uint32 ii;
+    for (ii=0; ii<stripNum-1; ii++) {
+      /* HEY: fix bug that Zimo found on an x86_64 linux */
+      if (offset[ii+1] - offset[ii] != stripSize) {
+        fprintf(stderr, "%s: strip[%u] start not contiguous with strip[%u] end "
+                "(%lu != %u)\n", me, ii+1, ii,
+                offset[ii+1] - offset[ii], stripSize);
+        airMopError(mop); return 1;
+      }
     }
   }
 
