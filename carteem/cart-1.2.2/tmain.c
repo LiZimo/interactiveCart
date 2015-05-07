@@ -213,7 +213,7 @@ main(int argc, const char *argv[]) {
   sizeOrig[0] = (unsigned int)nmap->axis[0].size;
   sizeOrig[1] = (unsigned int)nmap->axis[1].size;
   findPadSize(sizePad, sizeOrig);
-  ptrdiff_t padmin[2], padmax[2];
+  ptrdiff_t padmin[3], padmax[3];
   padmin[0] = -(ptrdiff_t)((sizePad[0] - sizeOrig[0])/2);
   padmin[1] = -(ptrdiff_t)((sizePad[1] - sizeOrig[1])/2);
   padmax[0] = padmin[0] + sizePad[0];
@@ -273,17 +273,34 @@ main(int argc, const char *argv[]) {
   /* allocated grid of control points */
   Nrrd *ngrid = nrrdNew();
   airMopAdd(mop, ngrid, (airMopper)nrrdNuke, airMopAlways);
-  /* HEY: initialize this by axinsert, padding nrho,
-     and then decrement origin by half a sample,
-     and set centering to node */
-  size_t gsize[3] = {2, xsize+1, ysize+1};
-  if (nrrdMaybeAlloc_nva(ngrid, nrrdTypeDouble, 3, gsize)) {
+  Nrrd *ntmp = nrrdNew();
+  airMopAdd(mop, ntmp, (airMopper)nrrdNuke, airMopAlways);
+  padmin[0] = 0; padmax[0] = 1;
+  padmin[1] = 0; padmax[1] = xsize;
+  padmin[2] = 0; padmax[2] = ysize;
+
+  if (nrrdConvert(ntmp, nrho, nrrdTypeDouble)
+      || nrrdAxesInsert(ntmp, ntmp, 0)
+      || nrrdPad_nva(ngrid, ntmp, padmin, padmax, nrrdBoundaryBleed, 0)) {
     airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
     fprintf(stderr, "%s: problem allocating grid: %s", me, err);
     airMopError(mop);
     return 1;
   }
+  /* adjust ngrid to be node-centered grid around
+     the cell-centered samples of nrho */
   gridxy = (double*)(ngrid->data);
+  ngrid->axis[0].center = nrrdCenterUnknown;
+  ngrid->axis[1].center = nrrdCenterNode;
+  ngrid->axis[2].center = nrrdCenterNode;
+  double vx = nrho->axis[0].spaceDirection[0];
+  double vy = nrho->axis[0].spaceDirection[1];
+  ngrid->spaceOrigin[0] = nrho->spaceOrigin[0] - 0.5*vx;
+  ngrid->spaceOrigin[1] = nrho->spaceOrigin[1] - 0.5*vy;
+  vx = nrho->axis[1].spaceDirection[0];
+  vy = nrho->axis[1].spaceDirection[1];
+  ngrid->spaceOrigin[0] -= 0.5*vx;
+  ngrid->spaceOrigin[1] -= 0.5*vy;
 
   /* Make the cartogram */
   unsigned int repIdx;
@@ -302,7 +319,7 @@ main(int argc, const char *argv[]) {
     }
   }
 
-  /* ZIMO: convert vectors in ngrid, to world-space */
+  /* ZIMO: convert vectors in ngrid from index-space to world-space */
 
   if (nrrdSave(outName, ngrid, NULL)) {
     airMopAdd(mop, err = biffGetDone(NRRD), airFree, airMopAlways);
