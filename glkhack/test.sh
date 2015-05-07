@@ -31,7 +31,7 @@ TE="-2160000 -1580000 2470000 1270000"
 
 ### reproject and rasterize json files
 # if false: skip; if true: do it
-if false; then
+if true; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
   Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL"
   Doo "rm -f county.json; ogr2ogr -f geojson -t_srs \"$PROJ\" county.json $COUNT_OUTL"
@@ -87,7 +87,7 @@ VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
 OCART="../carteem/cart-1.2.2/ocart"
 TCART="../carteem/cart-1.2.2/tcart"
 
-# This all pre-dates tcart being able to do its own map processing
+# OLD: This all pre-dates tcart being able to do its own map processing
 if false; then
   ### process areas.txt into lookup table
   ### and apply lookup table with "unu subst"
@@ -112,6 +112,5 @@ if false; then
   Doo "$TCART -i cart-in.nrrd  -o tcart-out.nrrd -r 1 -g refgrid.nrrd"
 fi
 
+# this is an example of new tcart invocation (as of Thu May 7)
 Doo "$TCART -i statelo.nrrd -s subst.txt -or rho.nrrd -te $TE -o disp.nrrd"
-
-
