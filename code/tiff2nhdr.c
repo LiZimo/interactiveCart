@@ -47,7 +47,7 @@ main(int argc, const char* argv[]) {
   hparm->elideSingleOtherType = AIR_TRUE;
   hestOptAdd(&hopt, "i", "tiff", airTypeString, 1, 1, &iname, NULL,
              "input tiff image filename");
-  hestOptAdd(&hopt, "co", NULL, airTypeInt, 0, 0, &checkoff, NULL,
+  hestOptAdd(&hopt, "co", "bool", airTypeBool, 1, 1, &checkoff, "true",
              "check offsets for contiguous strips.  The NRRD "
              "header currently assumes that the data is in one "
              "contiguous block.");
@@ -157,7 +157,7 @@ main(int argc, const char* argv[]) {
   }
 
 
-  long *offset=NULL;
+  uint32 *offset=NULL;
   TIFFGetField(tif, TIFFTAG_STRIPOFFSETS, &offset);
   if (!offset) {
     fprintf(stderr, "%s: didn't get allocate offset array\n", me);
@@ -176,7 +176,7 @@ main(int argc, const char* argv[]) {
       /* HEY: fix bug that Zimo found on an x86_64 linux */
       if (offset[ii+1] - offset[ii] != stripSize) {
         fprintf(stderr, "%s: strip[%u] start not contiguous with strip[%u] end "
-                "(%lu != %u)\n", me, ii+1, ii,
+                "(%u != %u)\n", me, ii+1, ii,
                 offset[ii+1] - offset[ii], stripSize);
         airMopError(mop); return 1;
       }
@@ -197,7 +197,7 @@ main(int argc, const char* argv[]) {
   fprintf(fil, "encoding: raw\n");
   fprintf(fil, "endian: %s\n", (TIFF_BIGENDIAN == magic
                                 ? "big" : "little"));
-  fprintf(fil, "byte skip: %lu\n", offset[0]);
+  fprintf(fil, "byte skip: %u\n", offset[0]);
   fprintf(fil, "data file: %s\n", iname);
 
   TIFFClose(tif);
