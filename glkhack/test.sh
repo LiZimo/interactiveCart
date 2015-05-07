@@ -44,14 +44,14 @@ if true; then
   # This number was confirmed via looking through the json file for
   # things NOT in alaska, hawaii, and puerto rico
   TR=1900
-  TRLO=6000
+  TRLO=7000
   Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff"
   Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a STATE state.json state.tiff"
   Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a COUNTY county.json county.tiff"
 
-  Doo "$T2N -i statelo.tiff  -o statelo.nhdr"
-  Doo "$T2N -i state.tiff  -o state.nhdr"
-  Doo "$T2N -i county.tiff -o county.nhdr"
+  Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr"
+  Doo "$T2N -i state.tiff -co false -o state.nhdr"
+  Doo "$T2N -i county.tiff -co false -o county.nhdr"
   Doo "unu 2op x 1000 state.nhdr | unu 2op + - county.nhdr -o state-county.png"
 
 fi # end reproject and rasterize
@@ -79,8 +79,7 @@ unu project -i aa.nrrd -a 0 -m mean |
 unu 2op / - aa.nrrd -w 1 |
 unu axinsert -a 0 |
 unu inset -i subst.txt -s - -min 1 1 -o subst.txt
-echo "0 -1" | unu inset -i subst.txt -s - -min 0 0 |
-unu convert -t double -o subst.txt
+echo "0 -1" | unu inset -i subst.txt -s - -min 0 0 -o subst.txt
 
 
 VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"

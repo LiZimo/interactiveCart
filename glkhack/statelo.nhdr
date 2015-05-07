@@ -1,0 +1,8 @@
+NRRD0004
+dimension: 2
+sizes: 661 407
+type: unsigned short
+encoding: raw
+endian: little
+byte skip: 910
+data file: statelo.tiff
