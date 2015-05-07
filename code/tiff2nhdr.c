@@ -53,6 +53,14 @@ main(int argc, const char* argv[]) {
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestOptFree), airMopAlways);
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestParseFree), airMopAlways);
 
+  /* with geotiff files, you'll get:
+     TIFFReadDirectory: Warning, Unknown field with tag 33550 (0x830e) encountered.
+     TIFFReadDirectory: Warning, Unknown field with tag 33922 (0x8482) encountered.
+     TIFFReadDirectory: Warning, Unknown field with tag 34735 (0x87af) encountered.
+     TIFFReadDirectory: Warning, Unknown field with tag 34736 (0x87b0) encountered.
+     TIFFReadDirectory: Warning, Unknown field with tag 34737 (0x87b1) encountered.
+     and the following line silences all warnigns */
+  TIFFSetWarningHandler(NULL);
 
   TIFF* tif = TIFFOpen(iname, "r");
   if (!tif) {
