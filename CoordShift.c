@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include </home/zimo/include>
+//#include "/home/zimo/include"
+#include <teem.h>
 #include "jsmn/jsmn.h"
 
 
@@ -32,7 +33,8 @@ Bilerp(float tl, float tr, float bl, float br, float x1, float x, float x2, floa
 
 int main(int argc, char** argv) {  
 /// arguments are in order: 1-world_space_geojson   2-cart map   3 - number of rows  
-	//4-number of columns 5-world x min 6-world x max 7 - world y min 8 world y max
+	//4-number of columns 5-world x min 6-world x max 7 - world y min    8- world y max
+	// 9 - outfile name
 
 
 
@@ -65,11 +67,12 @@ if( 1!=fread( geojson , lSize, 1 , fp) )
 int rows = argv[3];
 int columns = argv[4];
 
-////
+//
 Nrrd * cartmap;
 cartmap = nrrdNew();
 nrrdLoad(cartmap, argv[2], NULL);
 float * diff_map = (float *) cartmap ->data;
+
 
 
 /* do your work here, geojson is a string contains the whole text */
@@ -148,15 +151,19 @@ for (int k = 0; k < r-2; k++) {
         int newx = Bilerp(diff_map[(y1*columns + x1)*2], diff_map[(y1*columns+x2)*2], diff_map[(y2*columsn+x1)*2], diff_map[(y2*columns+x2)*2], x1, raster_x, x2, y1, raster_y, y2);
         int newy = Bilerp(diff_map[(y1*columns + x1)*2+1], diff_map[(y1*columns+x2)*2+1], diff_map[(y2*columsn+x1)*2+1], diff_map[(y2*columns+x2)*2+1], x1, raster_x, x2, y1, raster_y, y2);
 
-        char newx_string[length1];
-        char newy_string[length2];
+        //char newx_string[length1];
+        //char newy_string[length2];
 
-        //snprintf(&geojson[tokens[k+1].start], length1, "%f", newx);
-        //snprintf(&geojson[tokens[k+2].start], length2,"%f", newy);
+        snprintf(&geojson[tokens[k+1].start], length1, "%f", newx);
+        snprintf(&geojson[tokens[k+2].start], length2,"%f", newy);
     }
 
 }
 
+FILE *out = fopen(outfile, "ab");
+if (out == NULL) {printf("can't open outfilefile \n");}
+fputs(geojson, out);
+flcose(out);
 
 fclose(fp);
 free(geojson);
