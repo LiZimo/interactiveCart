@@ -26,6 +26,9 @@ STATE_OUTL=gz_2010_us_040_00_500k.json
 COUNT_OUTL=gz_2010_us_050_00_500k.json
 T2N="../code/tiff2nhdr"
 
+# TE= west south east north
+TE="-2160000 -1580000 2470000 1270000"
+
 ### reproject and rasterize json files
 # if false: skip; if true: do it
 if false; then
@@ -41,8 +44,7 @@ if false; then
   # This number was confirmed via looking through the json file for
   # things NOT in alaska, hawaii, and puerto rico
   TR=1900
-  TRLO=8000
-  TE="-2160000 -1580000 2470000 1270000"
+  TRLO=6000
   Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff"
   Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a STATE state.json state.tiff"
   Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a COUNTY county.json county.tiff"
@@ -60,11 +62,35 @@ fi # end reproject and rasterize
 #NUM=$(unu histo -i tmp.png -min $MIN -max $MAX -b $[$MAX-$MIN+1] | unu crop -min 1 -max M | unu 2op neq 0 - | unu project -a 0 -m sum | unu save -f text)
 #echo "========== found $NUM counties with TR $TR"
 
+# lose the district of columbia in maryland
+echo "11 24" | unu subst -i statelo.nhdr -s - -o statelo.nrrd
 
-### process areas.txt into lookup table
-### and apply lookup table with "unu subst"
-# if false: skip; if true: do it
-if true; then
+MIN=$(unu minmax statelo.nrrd | grep min: | cut -d' ' -f 2)
+MAX=$(unu minmax statelo.nrrd | grep max: | cut -d' ' -f 2)
+unu histo -i statelo.nrrd -min $MIN -max $MAX -b $[$MAX-$MIN+1] -t ushort -o tmp.nrrd; junk tmp.nrrd
+echo $MIN $MAX | unu reshape -s 2 |
+unu resample -s $[$MAX-$MIN+1] -k tent -c node -t ushort |
+unu join -i - tmp.nrrd -a 0 -incr |
+unu save -f text |
+grep -v " 0" > subst.txt
+unu slice -i subst.txt -a 0 -p 1 |
+unu crop -min 1 -max M -o aa.nrrd; junk aa.nrrd
+unu project -i aa.nrrd -a 0 -m mean |
+unu 2op / - aa.nrrd -w 1 |
+unu axinsert -a 0 |
+unu inset -i subst.txt -s - -min 1 1 -o subst.txt
+echo "0 -1" | unu inset -i subst.txt -s - -min 0 0 |
+unu convert -t double -o subst.txt
+
+
+VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
+OCART="../carteem/cart-1.2.2/ocart"
+TCART="../carteem/cart-1.2.2/tcart"
+
+# This all pre-dates tcart being able to do its own map processing
+if false; then
+  ### process areas.txt into lookup table
+  ### and apply lookup table with "unu subst"
   unu slice -i areas.txt -a 0 -p 1 | unu 2op / 52830 - | unu splice -i areas.txt -a 0 -p 1 -s - | unu save -f text | sort -n > area-inverse.txt
   echo "0 nan" | unu join -i - area-inverse.txt -a 1 -o area-inverse.txt
   unu convert -t float -i statelo.nhdr | unu subst -s area-inverse.txt -o area.nrrd
@@ -82,10 +108,10 @@ if true; then
   echo "======= SX=$SX  SY=$SY"
   Doo "unu save -i cart-in.nrrd -f nrrd -e ascii | unu data - > cart-in.txt"
 
-  VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
-  OCART="../carteem/cart-1.2.2/ocart"
-  TCART="../carteem/cart-1.2.2/tcart"
   Doo "$OCART $SX $SY cart-in.txt ocart-out.nrrd"
   Doo "$TCART -i cart-in.nrrd  -o tcart-out.nrrd -r 1 -g refgrid.nrrd"
 fi
+
+Doo "$TCART -i statelo.nrrd -s subst.txt -or rho.nrrd -te $TE -o disp.nrrd"
+
 
