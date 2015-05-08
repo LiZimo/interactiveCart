@@ -28,7 +28,6 @@
 
 int addOffset(double *rho, int xsize, int ysize) {
   int ii;
-  int n;
   double mean;
   double sum=0.0;
 

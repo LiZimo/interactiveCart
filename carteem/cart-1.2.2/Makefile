@@ -16,7 +16,7 @@ $(checkTEEM)
 #%:: s.%
 #%:: SCCS/s.%
 
-CFLAGS = -O3 -g
+CFLAGS = -O3 -g -Wall
 #CFLAGS = -g
 #CFLAGS = -p
 CC = gcc
