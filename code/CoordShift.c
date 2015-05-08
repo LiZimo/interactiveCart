@@ -5,8 +5,9 @@
 //#include "/home/zimo/include"
 #include "teem/meet.h"
 #include "../jsmn/jsmn.h"
-
-    
+/* compile with:
+gcc -O2 -o CoordShift CoordShift.c -I $TEEM/include -L $TEEM/lib -L ../jsmn -lteem -lpng -lz -ljsmn
+*/
 
 /* 3-vector U = 3x3 matrix M time 3-vector V */
 #define MV3_MUL(U, M, V)                               \
@@ -36,7 +37,7 @@ Bilerp(float tl, float tr, float bl, float br, float x1, float x, float x2, floa
   float ret = 0;
   ret = Lerp(Lerp(tl,tr,x1,x,x2), Lerp(bl, br, x1,x,x2), y1, y, y2);
   //lerp in x direction first
-
+  return ret;
 }
 
 int main(int argc, char** argv) {  
