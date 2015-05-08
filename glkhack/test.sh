@@ -124,5 +124,5 @@ Doo "$TCART -i statelo.nrrd -s subst.txt -or rho.nrrd -te $TE -o disp.nrrd"
 
 # this part at the end takes the cart output and makes a cartogram with it
 Doo "../code/CoordShift state.json disp.nrrd equal_area.json"
-Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot byte -a STATE equal_area.json cartogram.tiff"
+Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot Uint16 -a STATE equal_area.json cartogram.tiff"
 Doo "$T2N -i cartogram.tiff -co false -o cartogram.nhdr"
