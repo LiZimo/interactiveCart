@@ -6,7 +6,7 @@
 #include "teem/meet.h"
 #include "../jsmn/jsmn.h"
 /* compile with:
-gcc -O2 -o CoordShift CoordShift.c -I $TEEM/include -L $TEEM/lib -L ../jsmn -lteem -lpng -lz -ljsmn
+gcc -Wall -O2 -o CoordShift CoordShift.c -I $TEEM/include -L $TEEM/lib -L ../jsmn -lteem -lpng -lz -ljsmn
 */
 
 /* 3-vector U = 3x3 matrix M time 3-vector V */
@@ -87,7 +87,6 @@ INVERSE_23M(upper, ItoW, T);
 double WtoI[9] = {upper[0], upper[1], -1*(upper[0]*cartmap->spaceOrigin[0] + upper[1] * cartmap->spaceOrigin[1]), 
     upper[2], upper[3], -1*(upper[2]*cartmap->spaceOrigin[0] + upper[3] * cartmap->spaceOrigin[1]),
     0, 0 ,1};
-int rows = cartmap->axis[2].size;
 int columns = cartmap->axis[1].size;
 
 //printf("sizes: %d %d %d \n", cartmap->axis[0].size, cartmap->axis[1].size,cartmap->axis[2].size);
@@ -98,7 +97,6 @@ int columns = cartmap->axis[1].size;
 
 //printf("%s", geojson);
 
-int i;
 int r;
 int l;
 jsmn_parser parser;
@@ -118,7 +116,7 @@ jsmn_init(&parser);
 l = jsmn_parse(&parser, geojson, strlen(geojson), tokens, r);
 
 
-char tmp[20];
+//char tmp[20];
 for (int k = 0; k < r-2; k++) {
     //printf("r, end, start, k: %d %d %d %d\n", r, tokens[k].end, tokens[k].start, k);
     //scanf("%s", &tmp);
