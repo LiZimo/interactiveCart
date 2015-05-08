@@ -26,34 +26,42 @@ STATE_OUTL=gz_2010_us_040_00_500k.json
 COUNT_OUTL=gz_2010_us_050_00_500k.json
 T2N="../code/tiff2nhdr"
 
-# TE= west south east north
-TE="-2160000 -1580000 2470000 1270000"
+## TE= west south east north
+
+# something like "-tr 8000 8000 -te -3000000 -3000000 3000000 3000000"
+# shows a natural view of the projection output
+
+# this is a tight bounds on the US, but which might bound everything
+# after the diffusion cartograma displacement is applied
+#TE="-2160000 -1580000 2470000 1270000"
+
+# this gives more space to the north-east
+TE="-2160000 -1700000 2700000 1500000"
 
 ### reproject and rasterize json files
 # if false: skip; if true: do it
+TR=1900
+TRLO=7000
 if true; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
   Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL"
-  Doo "rm -f county.json; ogr2ogr -f geojson -t_srs \"$PROJ\" county.json $COUNT_OUTL"
-
-  # something like "-tr 8000 8000 -te -3000000 -3000000 3000000 3000000"
-  # shows a natural view of the projection output
-
-  # Slowly lowering TR, and counting the number of unique counties rasterized,
-  # the number seemed to max out at 3109 (TR=1950 acheives this)
-  # This number was confirmed via looking through the json file for
-  # things NOT in alaska, hawaii, and puerto rico
-  TR=1900
-  TRLO=7000
   Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff"
-  Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a STATE state.json state.tiff"
-  Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a COUNTY county.json county.tiff"
-
   Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr"
-  Doo "$T2N -i state.tiff -co false -o state.nhdr"
-  Doo "$T2N -i county.tiff -co false -o county.nhdr"
-  Doo "unu 2op x 1000 state.nhdr | unu 2op + - county.nhdr -o state-county.png"
 
+  ### Just for high-res state and county maps: reproject and rasterize jsons
+  # if false: skip; if true: do it
+  if false; then
+    Doo "rm -f county.json; ogr2ogr -f geojson -t_srs \"$PROJ\" county.json $COUNT_OUTL"
+    # Slowly lowering TR, and counting the number of unique counties rasterized,
+    # the number seemed to max out at 3109 (TR=1950 acheives this)
+    # This number was confirmed via looking through the json file for
+    # things NOT in alaska, hawaii, and puerto rico
+    Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a STATE state.json state.tiff"
+    Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a COUNTY county.json county.tiff"
+    Doo "$T2N -i state.tiff -co false -o state.nhdr"
+    Doo "$T2N -i county.tiff -co false -o county.nhdr"
+    Doo "unu 2op x 1000 state.nhdr | unu 2op + - county.nhdr -o state-county.png"
+  fi
 fi # end reproject and rasterize
 
 # to find number of unique IDs burned in tmp.png
@@ -113,3 +121,8 @@ fi
 
 # this is an example of new tcart invocation (as of Thu May 7)
 Doo "$TCART -i statelo.nrrd -s subst.txt -or rho.nrrd -te $TE -o disp.nrrd"
+
+# this part at the end takes the cart output and makes a cartogram with it
+Doo "../code/CoordShift state.json disp.nrrd equal_area.json"
+Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot byte -a STATE equal_area.json cartogram.tiff"
+Doo "$T2N -i cartogram.tiff -co false -o cartogram.nhdr"
