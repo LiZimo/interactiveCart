@@ -39,10 +39,10 @@ all: ocart tcart
 .c.o:
 	$(CC) -c $(CFLAGS) $(IPATH) -o $@ $<
 
-ocart: omain.o ocart.o
+ocart: omain.o ocart.o ocart.h
 	$(CC) $(CFLAGS) $(LPATH) $(LIBOPTS) -o ocart omain.o ocart.o $(LIBS)
 
-tcart: tmain.o tcart.o
+tcart: tmain.o tcart.o tcart.h
 	$(CC) $(CFLAGS) $(LPATH) $(LIBOPTS) -o tcart tmain.o tcart.o $(LIBS)
 
 # all: cart cart2 cartv cart2v
