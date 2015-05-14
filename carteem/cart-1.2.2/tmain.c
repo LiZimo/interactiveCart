@@ -90,8 +90,6 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig) {
    while (threePower < original) {
      remainders[rmndr_ind] = (int) original / threePower;
      threePower *= 3;
-     
-
 
      //int test = 800 % 900;
      //printf("remainder, threePower: %i %i \n", remainders[rmndr_ind], threePower);
@@ -113,7 +111,6 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig) {
        twoPower *= 2;
      }
 
-     
      potential[j] = (int) twoPower * (int) powf(3, j);
      //printf("potential size: %i %i \n", potential[j], j);
      //scanf("%s", tmp);
