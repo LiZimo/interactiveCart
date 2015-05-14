@@ -136,14 +136,16 @@ main(int argc, const char *argv[]) {
   Nrrd *nmap, *nsub, *nrho;
   char *err, *rhoName, *outName;
   unsigned int repeats;
-  double temm[4];
+  double time0, time1, temm[4];
+  char *wispath;
+  FILE *fwise;
 
   ctx = cartContextNew();
   airMopAdd(mop, ctx, (airMopper)cartContextNix, airMopAlways);
   airMopAdd(mop, hparm, AIR_CAST(airMopper, hestParmFree), airMopAlways);
   hestOptAdd(&hopt, "i", "map", airTypeOther, 1, 1, &nmap, NULL,
              "output of gdal_rasterize", NULL, NULL, nrrdHestNrrd);
-  hestOptAdd(&hopt, "te", "xmin ymin xmax ymax", airTypeDouble, 4, 4,
+  hestOptAdd(&hopt, "te", "x0 y0 x1 y1", airTypeDouble, 4, 4,
              temm, NULL, "the -te args given to gdal_rasterize");
   hestOptAdd(&hopt, "s", "subst", airTypeOther, 1, 1, &nsub, NULL,
              "substitution table, to apply to \"-i\" map to generate "
@@ -154,7 +156,7 @@ main(int argc, const char *argv[]) {
   hestOptAdd(&hopt, "mr", "maxratio", airTypeDouble, 1, 1,
              &(ctx->maxRatio), "4.0",
              "Max ratio to increase step size by");
-  hestOptAdd(&hopt, "err", "targetError", airTypeDouble, 1, 1,
+  hestOptAdd(&hopt, "err", "targErr", airTypeDouble, 1, 1,
              &(ctx->targetError), "0.01",
              "Desired accuracy per step in pixels");
   hestOptAdd(&hopt, "or", "fname", airTypeString, 1, 1, &rhoName, "",
@@ -170,6 +172,20 @@ main(int argc, const char *argv[]) {
              "level of printf verbosity");
   hestOptAdd(&hopt, "snap", NULL, airTypeInt, 0, 0, &(ctx->savesnaps), NULL,
              "save snapshots of the density computed via fft");
+  hestOptAdd(&hopt, "pr", "rigor", airTypeEnum, 1, 1, &(ctx->rigor), "est",
+             "rigor with which fftw plan is constructed. Options are:\n "
+             "\b\bo \"e\", \"est\", \"estimate\": only an estimate\n "
+             "\b\bo \"m\", \"meas\", \"measure\": standard amount of "
+             "measurements of system properties\n "
+             "\b\bo \"p\", \"pat\", \"patient\": slower, more measurements\n "
+             "\b\bo \"x\", \"ex\", \"exhaustive\": slowest, most measurements",
+             NULL, nrrdFFTWPlanRigor);
+  hestOptAdd(&hopt, "w", "filename", airTypeString, 1, 1, &wispath, "",
+             "A filename here is used to read in fftw \"wisdom\" (if the file "
+             "exists already), and is used to save out updated wisdom "
+             "after the transform.  By default (not using this option), "
+             "no wisdom is read or saved. Note: no wisdom is gained "
+             "(that is, learned by fftw) with planning rigor \"estimate\".");
   hestOptAdd(&hopt, "o", "fname", airTypeString, 1, 1, &outName, NULL,
              "output filename");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
@@ -195,6 +211,22 @@ main(int argc, const char *argv[]) {
     airMopError(mop);
     return 1;
   }
+
+  if (airStrlen(wispath)) {
+    fwise = fopen(wispath, "r");
+    if (fwise) {
+      if (!fftw_import_wisdom_from_file(fwise)) {
+        fprintf(stderr, "%s: (couldn't import wisdom from \"%s\"; "
+                "will try to save later)\n", me, wispath);
+        return 1;
+      }
+      fclose(fwise);
+    } else {
+      fprintf(stderr, "%s: (\"%s\" couldn't be opened, will try to save "
+              "wisdom afterwards)\n", me, wispath);
+    }
+  }
+
   {
     /* (new block to limit scope of "sub") */
     float *sub = (float*)(nsub->data);
@@ -273,7 +305,10 @@ main(int argc, const char *argv[]) {
   int ysize = (int)nrho->axis[1].size;
 
   /* Allocate space for the cartogram code to use */
+  time0 = airTime();
   cart_makews(ctx,xsize,ysize);
+  time1 = airTime();
+  printf("%s: %g secs for cart_makews\n", me, time1-time0);
 
   addOffset(rho,xsize,ysize);
   cart_forward(ctx,rho,xsize,ysize);
@@ -317,14 +352,25 @@ main(int argc, const char *argv[]) {
       printf("%s: %u/%u begins ... \n", me, repIdx, repeats);
     }
     creategrid(gridxy,xsize,ysize);
-    double time0 = airTime();
+    time0 = airTime();
     cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
-    double time1 = airTime();
+    time1 = airTime();
     if (repeats > 1) {
       printf("%s:              ... %g secs for %u/%u\n", me, time1-time0, repIdx, repeats);
     } else {
       printf("%s:              ... %g secs\n", me, time1-time0);
     }
+  }
+
+  if (airStrlen(wispath)) {
+    if (!(fwise = fopen(wispath, "w"))) {
+      fprintf(stderr, "%s: couldn't open %s for writing: %s\n",
+              me, wispath, strerror(errno));
+      airMopError(mop);
+      return 1;
+    }
+    fftw_export_wisdom_to_file(fwise);
+    fclose(fwise);
   }
 
   /* ZIMO: convert vectors in ngrid from index-space to world-space */
