@@ -41,7 +41,7 @@ typedef struct {
   /* GLK removed previous the "2D array" structure of vxt and vyt, which
      halved the number of memory loads in their use, and also interleaved
      vxt and vyt arrays, considering locality */
-  double *vxyt[5];        // (x,y) velocity at time t
+  double *vxyt;        // (x,y) velocity at time t
 
   double *preexp;         // Array needed for the Gaussian convolution
 

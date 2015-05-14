@@ -74,13 +74,13 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig) {
      smallest N >= 2*sizeOrig[i] which is a product of
      some power of 2 and some power of 3 */
      //char tmp[5];
-  sizePad[0] = 2*sizeOrig[0];
-  sizePad[1] = 2*sizeOrig[1];
+  sizePad[0] = sizeOrig[0];
+  sizePad[1] = sizeOrig[1];
 
    int i;
    for (i = 0; i<2; i++) {
 
-   int original = (int) 2*sizeOrig[i];
+   int original = (int) (1.5 * ((float) sizeOrig[i]));
    int threePower = 1;
    int remainders[(int) log2(sizePad[0])];
    int rmndr_ind = 0;
