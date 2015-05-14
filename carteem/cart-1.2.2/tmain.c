@@ -26,6 +26,15 @@
 #define OFFSET 0.005
 
 
+int minElem (int * array, int size) {
+  int min_elem = array[0];
+  int j;
+  for (j = 1; j < size; j++) {
+    if (array[j] < min_elem) {min_elem = array[j];}
+  }
+  return min_elem;
+}
+
 int addOffset(double *rho, int xsize, int ysize) {
   int ii;
   double mean;
@@ -66,6 +75,47 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig) {
      some power of 2 and some power of 3 */
   sizePad[0] = 2*sizeOrig[0];
   sizePad[1] = 2*sizeOrig[1];
+
+  int i;
+  for (i = 1; i<3; i++) {
+  
+  int original = sizeOrig[i];
+  int power3 = 1;
+  int threePower = 3;
+  int remainders[(int) log2(sizePad[0])];
+  int rmndr_ind = 0;
+
+  while (threePower <= original) {
+    remainders[rmndr_ind] = original % threePower;
+    power3++;
+    threePower *= 3;
+    rmndr_ind++;
+  }
+
+  int potential[rmndr_ind];
+  
+  int j;
+  for (j = 0; j <= rmndr_ind; j ++) {
+    int rmndr = remainders[j];
+    int power2 = 1;
+    int twoPower = 2;
+
+    while ( twoPower < rmndr) {
+      power2++;
+      twoPower *= 2;
+    }
+
+    potential[j] = twoPower * threePower;
+
+  }
+
+  sizePad[i] = minElem(potential, rmndr_ind);
+
+}
+
+
+
+
 }
 
 int
