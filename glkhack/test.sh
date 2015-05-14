@@ -93,7 +93,7 @@ VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
 OCART="../carteem/cart-1.2.2/ocart"
 TCART="../carteem/cart-1.2.2/tcart"
 
-Doo "$TCART -i statelo.nrrd -s subst.txt -or rho.nrrd -te $TE -o disp.nrrd"
+Doo "$TCART -w wisdom.txt -pr p -i statelo.nrrd -s subst.txt -or rho.nrrd -te $TE -o disp.nrrd"
 
 # this part at the end takes the cart output and makes a cartogram with it
 Doo "../code/CoordShift state.json disp.nrrd equal_area.json"

@@ -26,6 +26,8 @@
 typedef struct {
   int savesnaps;        // save snapshots
   int verbosity;
+  int rigor;            /* of fftw plan construction, with values from the
+                           nrrdFFTWPlanRigor* enum */
   double initH,         /* replaces "#define INITH 0.001"
                            Initial size of a time-step */
     maxRatio,           /* replaces "#define MAXRATIO 4.0"

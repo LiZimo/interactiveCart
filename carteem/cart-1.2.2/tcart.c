@@ -10,6 +10,31 @@
 #include "tcart.h"
 #include "teem/meet.h"
 
+static int frigor(int rigor) {
+  /* static const char me[]="frigor"; */
+  int ret;
+  switch (rigor) {
+  case nrrdFFTWPlanRigorExhaustive:
+    ret = FFTW_EXHAUSTIVE;
+    /* fprintf(stderr, "!%s: exhaustive %d\n", me, ret); */
+    break;
+  case nrrdFFTWPlanRigorMeasure:
+    ret = FFTW_MEASURE;
+    /* fprintf(stderr, "!%s: measure %d\n", me, ret); */
+    break;
+  case nrrdFFTWPlanRigorPatient:
+    ret = FFTW_PATIENT;
+    /* fprintf(stderr, "!%s: patient %d\n", me, ret); */
+    break;
+  case nrrdFFTWPlanRigorEstimate:
+  default:
+    ret = FFTW_ESTIMATE;
+    /* fprintf(stderr, "!%s: estimate %d\n", me, ret); */
+    break;
+  }
+  return ret;
+}
+
 cartContext *
 cartContextNew() {
   cartContext *ctx;
@@ -63,7 +88,8 @@ void cart_makews(cartContext *ctx, int xsize, int ysize)
 
   for (i=0; i<5; i++) {
     ctx->rhotplan[i] = fftw_plan_r2r_2d(ysize,xsize,ctx->fftexpt,ctx->rhot[i],
-                                        FFTW_REDFT01,FFTW_REDFT01,FFTW_MEASURE);
+                                        FFTW_REDFT01, FFTW_REDFT01,
+                                        frigor(ctx->rigor));
   }
 }
 
@@ -98,7 +124,7 @@ void cart_forward(cartContext *ctx, double *rho, int xsize, int ysize)
   fftw_plan plan;
 
   plan = fftw_plan_r2r_2d(ysize,xsize,rho,ctx->fftrho,
-			  FFTW_REDFT10,FFTW_REDFT10,FFTW_ESTIMATE);
+			  FFTW_REDFT10,FFTW_REDFT10,frigor(ctx->rigor));
   fftw_execute(plan);
   fftw_destroy_plan(plan);
 }
