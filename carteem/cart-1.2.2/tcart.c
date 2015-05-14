@@ -16,6 +16,8 @@ cartContextNew() {
   unsigned int si;
   ctx = (cartContext *)(calloc(1, sizeof(cartContext)));
   if (ctx) {
+    ctx->initH = 0.001;
+    ctx->targetError = 0.01;
     ctx->savesnaps = AIR_FALSE;
     for (si=0; si<4; si++) {
       ctx->rhot[si] = NULL;
@@ -466,11 +468,11 @@ void cart_twosteps(cartContext *ctx,
 
 /* Function to estimate the percentage completion */
 
-int cart_complete(double t)
+int cart_complete(cartContext *ctx, double t)
 {
   int res;
 
-  res = 100*log(t/INITH)/log(EXPECTEDTIME/INITH);
+  res = 100*log(t/(ctx->initH))/log(EXPECTEDTIME/(ctx->initH));
   if (res>100) res = 100;
 
   return res;
@@ -502,7 +504,7 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
 
   step = 0;
   t = 0.5*blur*blur;
-  h = INITH;
+  h = ctx->initH;
   loopi = 0;
   do {
 
@@ -519,24 +521,24 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
     /* Adjust the time-step.  Factor of 2 arises because the target for
      * the two-step process is twice the target for an individual step */
 
-    desiredratio = pow(2*TARGETERROR/error,0.2);
+    desiredratio = pow(2*(ctx->targetError)/error,0.2);
     if (ctx->verbosity) {
       printf("%s(%d): h=%g, error=%g (vs %g) -> desiredratio=%g ",
-             me, loopi, h, error, TARGETERROR, desiredratio);
+             me, loopi, h, error, ctx->targetError, desiredratio);
     }
-    if (desiredratio>MAXRATIO) {
-      h *= MAXRATIO;
+    if (desiredratio>(ctx->maxRatio)) {
+      h *= ctx->maxRatio;
       if (ctx->verbosity) {
-        printf("> %g -> h=%g\n", MAXRATIO, h);
+        printf("> %g -> h=%g\n", ctx->maxRatio, h);
       }
     } else {
       h *= desiredratio;
       if (ctx->verbosity) {
-        printf("<= %g -> h=%g\n", MAXRATIO, h);
+        printf("<= %g -> h=%g\n", ctx->maxRatio, h);
       }
     }
 
-    done = cart_complete(t);
+    done = cart_complete(ctx, t);
 #ifdef PERCENT
     fprintf(stdout,"%i\n",done);
 #endif

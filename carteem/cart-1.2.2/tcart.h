@@ -18,20 +18,23 @@
 
 /* Constants */
 
-#define INITH 0.001          // Initial size of a time-step
-#define TARGETERROR 0.01     // Desired accuracy per step in pixels
-#define MAXRATIO 4.0         // Max ratio to increase step size by
 #define EXPECTEDTIME 1.0e8   // Guess as to the time it will take, used to
                              // estimate completion
 
 #define PI 3.1415926535897932384626
 
 typedef struct {
-  int savesnaps;         // save snapshots
+  int savesnaps;        // save snapshots
   int verbosity;
-  double *rhot[5];       // Pop density at time t (five snaps needed)
-  double *fftrho;        // FT of initial density
-  double *fftexpt;       // FT of density at time t
+  double initH,         /* replaces "#define INITH 0.001"
+                           Initial size of a time-step */
+    maxRatio,           /* replaces "#define MAXRATIO 4.0"
+                           Max ratio to increase step size by */
+    targetError;        /* replaces "#define TARGETERROR 0.01"
+                           Desired accuracy per step in pixels */
+  double *rhot[5];      // Pop density at time t (five snaps needed)
+  double *fftrho;       // FT of initial density
+  double *fftexpt;      // FT of density at time t
 
   /* GLK removed previous the "2D array" structure of vxt and vyt, which
      halved the number of memory loads in their use, and also interleaved

@@ -148,6 +148,15 @@ main(int argc, const char *argv[]) {
   hestOptAdd(&hopt, "s", "subst", airTypeOther, 1, 1, &nsub, NULL,
              "substitution table, to apply to \"-i\" map to generate "
              "the initial density map", NULL, NULL, nrrdHestNrrd);
+  hestOptAdd(&hopt, "h0", "init h", airTypeDouble, 1, 1,
+             &(ctx->initH), "0.001",
+             "Initial size of a time-step");
+  hestOptAdd(&hopt, "mr", "maxratio", airTypeDouble, 1, 1,
+             &(ctx->maxRatio), "4.0",
+             "Max ratio to increase step size by");
+  hestOptAdd(&hopt, "err", "targetError", airTypeDouble, 1, 1,
+             &(ctx->targetError), "0.01",
+             "Desired accuracy per step in pixels");
   hestOptAdd(&hopt, "or", "fname", airTypeString, 1, 1, &rhoName, "",
              "if a filename is given here, the computed density map "
              "is saved to this file, to allow inspecting the input "
