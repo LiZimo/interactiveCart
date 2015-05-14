@@ -40,8 +40,7 @@ TE="-2160000 -1700000 2700000 1500000"
 
 ### reproject and rasterize json files
 # if false: skip; if true: do it
-TR=1900
-TRLO=7000
+TRLO=4000
 if true; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
   Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL"
@@ -51,6 +50,7 @@ if true; then
   ### Just for high-res state and county maps: reproject and rasterize jsons
   # if false: skip; if true: do it
   if false; then
+    TR=1900
     Doo "rm -f county.json; ogr2ogr -f geojson -t_srs \"$PROJ\" county.json $COUNT_OUTL"
     # Slowly lowering TR, and counting the number of unique counties rasterized,
     # the number seemed to max out at 3109 (TR=1950 acheives this)
@@ -68,16 +68,15 @@ fi # end reproject and rasterize
 #MIN=$(unu minmax tmp.png | grep min: | cut -d' ' -f 2)
 #MAX=$(unu minmax tmp.png | grep max: | cut -d' ' -f 2)
 #NUM=$(unu histo -i tmp.png -min $MIN -max $MAX -b $[$MAX-$MIN+1] | unu crop -min 1 -max M | unu 2op neq 0 - | unu project -a 0 -m sum | unu save -f text)
-#echo "========== found $NUM counties with TR $TR"
 
 # lose the district of columbia in maryland
 echo "11 24" | unu subst -i statelo.nhdr -s - -o statelo.nrrd
 
 MIN=$(unu minmax statelo.nrrd | grep min: | cut -d' ' -f 2)
 MAX=$(unu minmax statelo.nrrd | grep max: | cut -d' ' -f 2)
-unu histo -i statelo.nrrd -min $MIN -max $MAX -b $[$MAX-$MIN+1] -t ushort -o tmp.nrrd; junk tmp.nrrd
+unu histo -i statelo.nrrd -min $MIN -max $MAX -b $[$MAX-$MIN+1] -t double -o tmp.nrrd; junk tmp.nrrd
 echo $MIN $MAX | unu reshape -s 2 |
-unu resample -s $[$MAX-$MIN+1] -k tent -c node -t ushort |
+unu resample -s $[$MAX-$MIN+1] -k tent -c node -t double |
 unu join -i - tmp.nrrd -a 0 -incr |
 unu save -f text |
 grep -v " 0" > subst.txt
@@ -94,35 +93,9 @@ VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
 OCART="../carteem/cart-1.2.2/ocart"
 TCART="../carteem/cart-1.2.2/tcart"
 
-# OLD: This all pre-dates tcart being able to do its own map processing
-if false; then
-  ### process areas.txt into lookup table
-  ### and apply lookup table with "unu subst"
-  unu slice -i areas.txt -a 0 -p 1 | unu 2op / 52830 - | unu splice -i areas.txt -a 0 -p 1 -s - | unu save -f text | sort -n > area-inverse.txt
-  echo "0 nan" | unu join -i - area-inverse.txt -a 1 -o area-inverse.txt
-  unu convert -t float -i statelo.nhdr | unu subst -s area-inverse.txt -o area.nrrd
-  AVG=$(unu axmerge -i area.nrrd -a 0 | unu project -a 0 -m mean | unu save -f text)
-  unu 2op exists area.nrrd $AVG -o cart-in0.nrrd
-
-  SZA=($(unu head cart-in0.nrrd | grep sizes))
-  SX=$[2*${SZA[1]}]
-  SY=$[2*${SZA[2]}]
-  PX=$[($SX - ${SZA[1]})/2]
-  PY=$[($SY - ${SZA[2]})/2]
-
-  unu pad -i cart-in0.nrrd -min -$PX -$PY -max m+$[$SX-1] m+$[$SY-1] | unu convert -t double -o cart-in.nrrd
-
-  echo "======= SX=$SX  SY=$SY"
-  Doo "unu save -i cart-in.nrrd -f nrrd -e ascii | unu data - > cart-in.txt"
-
-  Doo "$OCART $SX $SY cart-in.txt ocart-out.nrrd"
-  Doo "$TCART -i cart-in.nrrd  -o tcart-out.nrrd -r 1 -g refgrid.nrrd"
-fi
-
-# this is an example of new tcart invocation (as of Thu May 7)
 Doo "$TCART -i statelo.nrrd -s subst.txt -or rho.nrrd -te $TE -o disp.nrrd"
 
 # this part at the end takes the cart output and makes a cartogram with it
 Doo "../code/CoordShift state.json disp.nrrd equal_area.json"
-Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot Uint16 -a STATE equal_area.json cartogram.tiff"
-Doo "$T2N -i cartogram.tiff -co false -o cartogram.nhdr"
+Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot Uint16 -a STATE equal_area.json statelo-cart.tiff"
+Doo "$T2N -i statelo-cart.tiff -co false -o statelo-cart.nhdr"
