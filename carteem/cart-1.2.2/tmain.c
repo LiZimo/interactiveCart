@@ -72,47 +72,57 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig, int fff) {
   static const char me[]="findPadSize";
   //char tmp[5];
 
-  sizePad[0] = 2*sizeOrig[0];
-  sizePad[1] = 2*sizeOrig[1];
+  sizePad[0] = sizeOrig[0];
+  sizePad[1] = sizeOrig[1];
   if (!fff) {
-    printf("%s: (simple) %d==%d %d==%d", me, sizePad[0], 2*sizeOrig[0],
-           sizePad[1], 2*sizeOrig[1]);
+    sizePad[0] = 1.5*sizeOrig[0];
+    sizePad[1] = 1.5*sizeOrig[1];
   } else {
     int i;
     for (i = 0; i<2; i++) {
-      int original = (int) 2*sizeOrig[i];
+
+      int original = (int) (1.5 * ((float) sizeOrig[i]));
       int threePower = 1;
       int remainders[(int) log2(sizePad[0])];
       int rmndr_ind = 0;
+
       //printf("original, threePower: %i %i\n", original, threePower);
       //scanf("%s", tmp);
       while (threePower < original) {
         remainders[rmndr_ind] = (int) original / threePower;
         threePower *= 3;
+
         //int test = 800 % 900;
         //printf("remainder, threePower: %i %i \n", remainders[rmndr_ind], threePower);
         //scanf("%s", tmp);
+
         rmndr_ind++;
+
       }
+
       threePower /= 3;
       int potential[rmndr_ind];
+
       int j;
       for (j = 0; j < rmndr_ind; j ++) {
         int rmndr = remainders[j];
         int twoPower = 1;
+
         while ( twoPower < rmndr + 1 ) {
           twoPower *= 2;
         }
+
         potential[j] = (int) twoPower * (int) powf(3, j);
         //printf("potential size: %i %i \n", potential[j], j);
         //scanf("%s", tmp);
+
       }
+
       sizePad[i] = minElem(potential, rmndr_ind);
     }
-    //scanf("%s",tmp);
-    printf("%s: %d>=%d %d>=%d", me, sizePad[0], 2*sizeOrig[0], sizePad[1], 2*sizeOrig[1]);
   }
-  return;
+  printf("%s: %d %d\n", me, sizePad[0], sizePad[1]);
+  //scanf("%s",tmp);
 }
 
 int

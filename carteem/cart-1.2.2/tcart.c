@@ -46,7 +46,8 @@ cartContextNew() {
     ctx->savesnaps = AIR_FALSE;
     for (si=0; si<4; si++) {
       ctx->rhot[si] = NULL;
-      ctx->vxyt[si] = NULL;
+      //ctx->vxyt[si] = NULL;
+      ctx->vxyt = NULL;
       ctx->rhotplan[si] = NULL;
     }
     ctx->fftrho = NULL;
@@ -78,9 +79,11 @@ void cart_makews(cartContext *ctx, int xsize, int ysize)
   ctx->fftrho = fftw_malloc(xsize*ysize*sizeof(double));
   ctx->fftexpt = fftw_malloc(xsize*ysize*sizeof(double));
 
-  for (s=0; s<5; s++) {
-    ctx->vxyt[s] = (double*)malloc(2*(xsize+1)*(ysize+1)*sizeof(double));
-  }
+  //for (s=0; s<5; s++) {
+  //  ctx->vxyt[s] = (double*)malloc(2*(xsize+1)*(ysize+1)*sizeof(double));
+  //}
+
+  ctx->vxyt = (double*)malloc(5*2*(xsize+1)*(ysize+1)*sizeof(double));
 
   ctx->preexp = malloc(xsize*sizeof(double));
 
@@ -105,9 +108,10 @@ void cart_freews(cartContext *ctx)
   fftw_free(ctx->fftrho);
   fftw_free(ctx->fftexpt);
 
-  for (s=0; s<5; s++) {
-    free(ctx->vxyt[s]);
-  }
+  //for (s=0; s<5; s++) {
+  //  free(ctx->vxyt[s]);
+  //}
+  free(ctx->vxyt);
 
   free(ctx->preexp);
 
@@ -201,19 +205,25 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   static unsigned int snapi = 0;
 
   /* Do the corners */
-  ctx->vxyt[s][0 + 2*(0     + xsp*0)]     = ctx->vxyt[s][1 + 2*(0     + xsp*0)] = 0.0;
-  ctx->vxyt[s][0 + 2*(xsize + xsp*0)]     = ctx->vxyt[s][1 + 2*(xsize + xsp*0)] = 0.0;
-  ctx->vxyt[s][0 + 2*(0     + xsp*ysize)] = ctx->vxyt[s][1 + 2*(0     + xsp*ysize)] = 0.0;
-  ctx->vxyt[s][0 + 2*(xsize + xsp*ysize)] = ctx->vxyt[s][1 + 2*(xsize + xsp*ysize)] = 0.0;
+ //ctx->vxyt[s][0 + 2*(0     + xsp*0)]     = ctx->vxyt[s][1 + 2*(0     + xsp*0)] = 0.0;
+ //ctx->vxyt[s][0 + 2*(xsize + xsp*0)]     = ctx->vxyt[s][1 + 2*(xsize + xsp*0)] = 0.0;
+ //ctx->vxyt[s][0 + 2*(0     + xsp*ysize)] = ctx->vxyt[s][1 + 2*(0     + xsp*ysize)] = 0.0;
+ //ctx->vxyt[s][0 + 2*(xsize + xsp*ysize)] = ctx->vxyt[s][1 + 2*(xsize + xsp*ysize)] = 0.0;
+
+  ctx->vxyt[(0 + 2*(0    + xsp*0))*5 + s]     = ctx->vxyt[(1 + 2*(0     + xsp*0))*5 + s ] = 0.0;
+  ctx->vxyt[(0 + 2*(xsize + xsp*0))*5 + s]     = ctx->vxyt[(1 + 2*(xsize + xsp*0))*5 + s ] = 0.0;
+  ctx->vxyt[(0 + 2*(0     + xsp*ysize))*5 + s] = ctx->vxyt[(1 + 2*(0     + xsp*ysize)) + s ] = 0.0;
+  ctx->vxyt[(0 + 2*(xsize + xsp*ysize))*5 + s] = ctx->vxyt[(1 + 2*(xsize + xsp*ysize))*5 + s ] = 0.0;
 
   /* Do the top border */
 
   r11 = ctx->rhot[s][0 + xsize*0];
+
   for (ix=1; ix<xsize; ix++) {
     r01 = r11;
     r11 = ctx->rhot[s][ix + xsize*0];
-    ctx->vxyt[s][0 + 2*(ix + xsp*0)] = -2*(r11-r01)/(r11+r01);
-    ctx->vxyt[s][1 + 2*(ix + xsp*0)] = 0.0;
+    ctx->vxyt[(0 + 2*(ix + xsp*0))*5 + s] = -2*(r11-r01)/(r11+r01);
+    ctx->vxyt[(1 + 2*(ix + xsp*0))*5 + s] = 0.0;
   }
 
   /* Do the bottom border */
@@ -222,8 +232,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   for (ix=1; ix<xsize; ix++) {
     r00 = r10;
     r10 = ctx->rhot[s][ix + xsize*(ysize-1)];
-    ctx->vxyt[s][0 + 2*(ix + xsp*ysize)] = -2*(r10-r00)/(r10+r00);
-    ctx->vxyt[s][1 + 2*(ix + xsp*ysize)] = 0.0;
+    ctx->vxyt[(0 + 2*(ix + xsp*ysize)) + s] = -2*(r10-r00)/(r10+r00);
+    ctx->vxyt[(1 + 2*(ix + xsp*ysize)) + s] = 0.0;
   }
 
   /* Left edge */
@@ -232,8 +242,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   for (iy=1; iy<ysize; iy++) {
     r10 = r11;
     r11 = ctx->rhot[s][0 + xsize*iy];
-    ctx->vxyt[s][0 + 2*(0 + xsp*iy)] = 0.0;
-    ctx->vxyt[s][1 + 2*(0 + xsp*iy)] = -2*(r11-r10)/(r11+r10);
+    ctx->vxyt[(0 + 2*(0 + xsp*iy))*5 + s] = 0.0;
+    ctx->vxyt[(1 + 2*(0 + xsp*iy))*5 + s] = -2*(r11-r10)/(r11+r10);
   }
 
   /* Right edge */
@@ -242,8 +252,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   for (iy=1; iy<ysize; iy++) {
     r00 = r01;
     r01 = ctx->rhot[s][xsize-1 + xsize*iy];
-    ctx->vxyt[s][0 + 2*(xsize + xsp*iy)] = 0.0;
-    ctx->vxyt[s][1 + 2*(xsize + xsp*iy)] = -2*(r01-r00)/(r01+r00);
+    ctx->vxyt[(0 + 2*(xsize + xsp*iy))*5 + s] = 0.0;
+    ctx->vxyt[(1 + 2*(xsize + xsp*iy))*5 + s] = -2*(r01-r00)/(r01+r00);
   }
 
   /* Now do all the points in the middle */
@@ -256,8 +266,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
       r10 = ctx->rhot[s][ix + xsize*(iy-1)];
       r11 = ctx->rhot[s][ix + xsize*iy];
       mid = r10 + r00 + r11 + r01;
-      ctx->vxyt[s][0 + 2*(ix + xsp*iy)] = -2*(r10-r00+r11-r01)/mid;
-      ctx->vxyt[s][1 + 2*(ix + xsp*iy)] = -2*(r01-r00+r11-r10)/mid;
+      ctx->vxyt[(0 + 2*(ix + xsp*iy))*5 + s] = -2*(r10-r00+r11-r01)/mid;
+      ctx->vxyt[(1 + 2*(ix + xsp*iy))*5 + s] = -2*(r01-r00+r11-r10)/mid;
     }
   }
 
@@ -265,7 +275,7 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
     char fname[128];
     sprintf(fname, "snapvel-%04u.nrrd", snapi);
     Nrrd *nsnap = nrrdNew();
-    if (nrrdWrap_va(nsnap, ctx->vxyt[s], nrrdTypeDouble, 3,
+    if (nrrdWrap_va(nsnap, ctx->vxyt, nrrdTypeDouble, 3,
                     (size_t)2, (size_t)(xsize+1), (size_t)(ysize+1))
         || nrrdSave(fname, nsnap, NULL)) {
       char *err = biffGetDone(NRRD);
@@ -293,6 +303,7 @@ void cart_velocity(const cartContext *ctx,
                    double rx, double ry, int s, int xsize, int ysize,
 		   double *vxp, double *vyp)
 {
+  //printf("changed! \n");
   int ix,iy;
   double dx,dy;
   double dx1m,dy1m;
@@ -323,9 +334,14 @@ void cart_velocity(const cartContext *ctx,
   w22 = dx*dy;
 
   /* Perform the interpolation for x and y components of velocity */
-  const double *vxy = ctx->vxyt[s] + 0 + 2*(ix   + xsp*iy);
-  *vxp = w11*vxy[0] + w21*vxy[0 + 2] + w12*vxy[0 + 2*xsp] + w22*vxy[0 + 2*(1 + xsp)];
-  *vyp = w11*vxy[1] + w21*vxy[1 + 2] + w12*vxy[1 + 2*xsp] + w22*vxy[1 + 2*(1 + xsp)];
+  //const double *vxy = ctx->vxyt[s] + 0 + 2*(ix   + xsp*iy);
+  //*vxp = w11*vxy[0] + w21*vxy[0 + 2] + w12*vxy[0 + 2*xsp] + w22*vxy[0 + 2*(1 + xsp)];
+  //*vyp = w11*vxy[1] + w21*vxy[1 + 2] + w12*vxy[1 + 2*xsp] + w22*vxy[1 + 2*(1 + xsp)];
+
+
+  const double *vxy = ctx->vxyt + (0 + 2*(ix   + xsp*iy))*5 + s;
+  *vxp = w11*vxy[0*5] + w21*vxy[(0 + 2)*5] + w12*vxy[(0 + 2*xsp)*5] + w22*vxy[(0 + 2*(1 + xsp))*5];
+  *vyp = w11*vxy[1*5] + w21*vxy[(1 + 2)*5] + w12*vxy[(1 + 2*xsp)*5] + w22*vxy[(1 + 2*(1 + xsp))*5];
 }
 
 
