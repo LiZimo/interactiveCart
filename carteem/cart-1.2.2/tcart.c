@@ -85,10 +85,23 @@ void cart_makews(cartContext *ctx, int xsize, int ysize)
 
   ctx->vxyt = (double*)malloc(5*2*(xsize+1)*(ysize+1)*sizeof(double));
 
+  /* VIDX() macro for indexing into ctx->vxyt
+     C: vector component: 0 or 1
+     X: x coord: 0 to xsize
+     Y: y coord: 0 to ysize
+     S: timestep: 0 through 4
+     NOTE: these macros assume xsp=1+xsize and/or ysp=1+ysize.
+     Different VIDX below are annotated with axes ordered fast-to-slow
+  */
+  // #define VIDX(C,X,Y,S) ((S) + 5*((C) + 2*((X) + xsp*(Y)))) // S C X Y
+#define VIDX(C,X,Y,S) ((C) + 2*((S) + 5*((X) + xsp*(Y)))) // C S X Y
+  // #define VIDX(C,X,Y,S) ((C) + 2*((X) + xsp*((Y) + ysp*(S)))) // C X Y S
+  // #define VIDX(C,X,Y,S) ((C) + 2*((X) + xsp*((S) + 5*(Y)))) // C X S Y
+  // #define VIDX(C,X,Y,S) ((S) + 5*((C) + 2*((Y) + ysp*(X)))) // S C Y X  (definitely slower)
+
   ctx->preexp = malloc(xsize*sizeof(double));
 
   /* Make plans for the back transforms */
-
   for (i=0; i<5; i++) {
     ctx->rhotplan[i] = fftw_plan_r2r_2d(ysize,xsize,ctx->fftexpt,ctx->rhot[i],
                                         FFTW_REDFT01, FFTW_REDFT01,
@@ -202,6 +215,7 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   double r01,r11;
   double mid;
   int xsp=xsize+1;
+  int ysp=ysize+1;
   static unsigned int snapi = 0;
 
   /* Do the corners */
@@ -210,10 +224,10 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
  //ctx->vxyt[s][0 + 2*(0     + xsp*ysize)] = ctx->vxyt[s][1 + 2*(0     + xsp*ysize)] = 0.0;
  //ctx->vxyt[s][0 + 2*(xsize + xsp*ysize)] = ctx->vxyt[s][1 + 2*(xsize + xsp*ysize)] = 0.0;
 
-  ctx->vxyt[(0 + 2*(0    + xsp*0))*5 + s]     = ctx->vxyt[(1 + 2*(0     + xsp*0))*5 + s ] = 0.0;
-  ctx->vxyt[(0 + 2*(xsize + xsp*0))*5 + s]     = ctx->vxyt[(1 + 2*(xsize + xsp*0))*5 + s ] = 0.0;
-  ctx->vxyt[(0 + 2*(0     + xsp*ysize))*5 + s] = ctx->vxyt[(1 + 2*(0     + xsp*ysize)) + s ] = 0.0;
-  ctx->vxyt[(0 + 2*(xsize + xsp*ysize))*5 + s] = ctx->vxyt[(1 + 2*(xsize + xsp*ysize))*5 + s ] = 0.0;
+  ctx->vxyt[VIDX(0,0,0,s)]     = ctx->vxyt[VIDX(1,0,0,s)]     = 0.0;
+  ctx->vxyt[VIDX(0,xsize,0,s)] = ctx->vxyt[VIDX(1,xsize,0,s)] = 0.0;
+  ctx->vxyt[VIDX(0,0,ysize,s)] = ctx->vxyt[VIDX(1,0,ysize,s)] = 0.0;
+  ctx->vxyt[VIDX(0,xsize,ysize,s)] = ctx->vxyt[VIDX(1,xsize,ysize,s)] = 0.0;
 
   /* Do the top border */
 
@@ -222,8 +236,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   for (ix=1; ix<xsize; ix++) {
     r01 = r11;
     r11 = ctx->rhot[s][ix + xsize*0];
-    ctx->vxyt[(0 + 2*(ix + xsp*0))*5 + s] = -2*(r11-r01)/(r11+r01);
-    ctx->vxyt[(1 + 2*(ix + xsp*0))*5 + s] = 0.0;
+    ctx->vxyt[VIDX(0,ix,0,s)] = -2*(r11-r01)/(r11+r01);
+    ctx->vxyt[VIDX(1,ix,0,s)] = 0.0;
   }
 
   /* Do the bottom border */
@@ -232,8 +246,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   for (ix=1; ix<xsize; ix++) {
     r00 = r10;
     r10 = ctx->rhot[s][ix + xsize*(ysize-1)];
-    ctx->vxyt[(0 + 2*(ix + xsp*ysize)) + s] = -2*(r10-r00)/(r10+r00);
-    ctx->vxyt[(1 + 2*(ix + xsp*ysize)) + s] = 0.0;
+    ctx->vxyt[VIDX(0,ix,ysize,s)] = -2*(r10-r00)/(r10+r00);
+    ctx->vxyt[VIDX(1,ix,ysize,s)] = 0.0;
   }
 
   /* Left edge */
@@ -242,8 +256,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   for (iy=1; iy<ysize; iy++) {
     r10 = r11;
     r11 = ctx->rhot[s][0 + xsize*iy];
-    ctx->vxyt[(0 + 2*(0 + xsp*iy))*5 + s] = 0.0;
-    ctx->vxyt[(1 + 2*(0 + xsp*iy))*5 + s] = -2*(r11-r10)/(r11+r10);
+    ctx->vxyt[VIDX(0,0,iy,s)] = 0.0;
+    ctx->vxyt[VIDX(1,0,iy,s)] = -2*(r11-r10)/(r11+r10);
   }
 
   /* Right edge */
@@ -252,8 +266,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
   for (iy=1; iy<ysize; iy++) {
     r00 = r01;
     r01 = ctx->rhot[s][xsize-1 + xsize*iy];
-    ctx->vxyt[(0 + 2*(xsize + xsp*iy))*5 + s] = 0.0;
-    ctx->vxyt[(1 + 2*(xsize + xsp*iy))*5 + s] = -2*(r01-r00)/(r01+r00);
+    ctx->vxyt[VIDX(0,xsize,iy,s)] = 0.0;
+    ctx->vxyt[VIDX(0,xsize,iy,s)] = -2*(r01-r00)/(r01+r00);
   }
 
   /* Now do all the points in the middle */
@@ -266,8 +280,8 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
       r10 = ctx->rhot[s][ix + xsize*(iy-1)];
       r11 = ctx->rhot[s][ix + xsize*iy];
       mid = r10 + r00 + r11 + r01;
-      ctx->vxyt[(0 + 2*(ix + xsp*iy))*5 + s] = -2*(r10-r00+r11-r01)/mid;
-      ctx->vxyt[(1 + 2*(ix + xsp*iy))*5 + s] = -2*(r01-r00+r11-r10)/mid;
+      ctx->vxyt[VIDX(0,ix,iy,s)] = -2*(r10-r00+r11-r01)/mid;
+      ctx->vxyt[VIDX(1,ix,iy,s)] = -2*(r01-r00+r11-r10)/mid;
     }
   }
 
@@ -275,8 +289,9 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
     char fname[128];
     sprintf(fname, "snapvel-%04u.nrrd", snapi);
     Nrrd *nsnap = nrrdNew();
-    if (nrrdWrap_va(nsnap, ctx->vxyt, nrrdTypeDouble, 3,
-                    (size_t)2, (size_t)(xsize+1), (size_t)(ysize+1))
+    if (nrrdWrap_va(nsnap, ctx->vxyt, nrrdTypeDouble, 4,
+                    /* HEY: the exact ordering here depends on VIDX */
+                    (size_t)5, (size_t)2, (size_t)(xsize+1), (size_t)(ysize+1))
         || nrrdSave(fname, nsnap, NULL)) {
       char *err = biffGetDone(NRRD);
       fprintf(stderr, "%s: couldn't wrap and save: %s\n", me, err);
@@ -309,6 +324,7 @@ void cart_velocity(const cartContext *ctx,
   double dx1m,dy1m;
   double w11,w21,w12,w22;
   int xsp=xsize+1;
+  int ysp=ysize+1;
 
   /* Deal with the boundary conditions */
 
@@ -337,11 +353,16 @@ void cart_velocity(const cartContext *ctx,
   //const double *vxy = ctx->vxyt[s] + 0 + 2*(ix   + xsp*iy);
   //*vxp = w11*vxy[0] + w21*vxy[0 + 2] + w12*vxy[0 + 2*xsp] + w22*vxy[0 + 2*(1 + xsp)];
   //*vyp = w11*vxy[1] + w21*vxy[1 + 2] + w12*vxy[1 + 2*xsp] + w22*vxy[1 + 2*(1 + xsp)];
-
-
+  /*
   const double *vxy = ctx->vxyt + (0 + 2*(ix   + xsp*iy))*5 + s;
   *vxp = w11*vxy[0*5] + w21*vxy[(0 + 2)*5] + w12*vxy[(0 + 2*xsp)*5] + w22*vxy[(0 + 2*(1 + xsp))*5];
   *vyp = w11*vxy[1*5] + w21*vxy[(1 + 2)*5] + w12*vxy[(1 + 2*xsp)*5] + w22*vxy[(1 + 2*(1 + xsp))*5];
+  */
+
+  const double *vxyt = ctx->vxyt;
+  *vxp = w11*vxyt[VIDX(0,ix,iy,s)] + w21*vxyt[VIDX(0,ix+1,iy,s)] + w12*vxyt[VIDX(0,ix,iy+1,s)] + w22*vxyt[VIDX(0,ix+1,iy+1,s)];
+  *vyp = w11*vxyt[VIDX(1,ix,iy,s)] + w21*vxyt[VIDX(1,ix+1,iy,s)] + w12*vxyt[VIDX(1,ix,iy+1,s)] + w22*vxyt[VIDX(1,ix+1,iy+1,s)];
+
 }
 
 
