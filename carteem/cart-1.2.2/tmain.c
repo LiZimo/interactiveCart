@@ -249,6 +249,7 @@ main(int argc, const char *argv[]) {
              "(that is, learned by fftw) with planning rigor \"estimate\".");
   hestOptAdd(&hopt, "o", "fname", airTypeString, 1, 1, &outName, NULL,
              "output filename");
+  hestOptAdd(&hopt, "nn", "nearestneighbor", airTypeInt, 1, 1, &(ctx->nn), "0", "for using nearest neighbor instead of bilinear interpolation");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
                  me, cartInfo, AIR_TRUE, AIR_TRUE, AIR_TRUE);
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestOptFree), airMopAlways);
@@ -416,7 +417,7 @@ main(int argc, const char *argv[]) {
     }
     creategrid(gridxy,xsize,ysize);
     time0 = airTime();
-    cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
+    cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0,ctx->nn);
     time1 = airTime();
     if (repeats > 1) {
       printf("%s:              ... %g secs for %u/%u\n", me, time1-time0, repIdx, repeats);

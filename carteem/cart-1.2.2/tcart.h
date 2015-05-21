@@ -46,6 +46,8 @@ typedef struct {
   double *preexp;         // Array needed for the Gaussian convolution
 
   fftw_plan rhotplan[5]; // Plan for rho(t) back-transform at time t
+
+  int nn;
 } cartContext;
 
 /* HEY cartContextNew() should take xsize, ysize, and
@@ -64,6 +66,6 @@ extern void cart_forward(cartContext *ctx, double *rho, int xsize, int ysize);
 extern void cart_makecart(cartContext *ctx,
                           /* GLK interleaved pointx and pointy arrays */
                           double *pointxy, int npoints,
-                          int xsize, int ysize, double blur);
+                          int xsize, int ysize, double blur, int nn);
 
 #endif
