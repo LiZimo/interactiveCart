@@ -327,12 +327,15 @@ void cart_velocity(const cartContext *ctx,
   int ysp=ysize+1;
 
   /* Deal with the boundary conditions */
-
-  ix = (int) (rx + 0.5) ;
+  if (nn == 1) {
+  ix = (int) (rx + 0.5) ;}
+  if (nn == 0) {ix = (int) rx;}
   if (ix<0) ix = 0;
   else if (ix>=xsize) ix = xsize - 1;
 
-  iy = (int) (ry + 0.5);
+  if (nn == 1) {
+  iy = (int) (ry + 0.5);}
+  if (nn == 0) {iy = (int) ry;}
   if (iy<0) iy = 0;
   else if (iy>=ysize) iy = ysize - 1;
 
