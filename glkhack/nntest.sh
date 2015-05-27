@@ -23,6 +23,8 @@ NN="$1"
 RK2="$2"
 TRLO="$3"
 
+
+
 # http://eric.clst.org/wupl/Stuff/gz_2010_us_040_00_500k.json
 # http://eric.clst.org/wupl/Stuff/gz_2010_us_050_00_500k.json
 
@@ -40,22 +42,15 @@ T2N="../code/tiff2nhdr"
 #TE="-2160000 -1580000 2470000 1270000"
 
 # this gives more space to the north-east
-#TE="-2160000 -1700000 2700000 1500000"
-
-#swap the TE for tests
-TE="-1700000 -2160000 1500000 2700000" 
-
-
-
+TE="-2160000 -1700000 2700000 1500000"
 
 ### reproject and rasterize json files
 # if false: skip; if true: do it
+#TRLO=4000
 #TRLO=8000
 if true; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
   Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL"
-  Doo "../code/CoordSwap state.json state1.json"
-  Doo "rm -f state.json; mv state1.json state.json"
   Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff"
   Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr"
 
@@ -109,5 +104,5 @@ Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst.txt -v 1 -or rho.nrrd -
 
 # this part at the end takes the cart output and makes a cartogram with it
 Doo "../code/CoordShift state.json disp.nrrd equal_area.json"
-Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot byte -a STATE equal_area.json statelo-cart-swap.tiff"
-Doo "$T2N -i statelo-cart-swap.tiff -co false -o statelo-cart.nhdr"
+Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot byte -a STATE equal_area.json statelo-cart.tiff"
+Doo "$T2N -i statelo-cart.tiff -co false -o statelo-cart.nhdr"
