@@ -48,6 +48,7 @@ typedef struct {
   fftw_plan rhotplan[5]; // Plan for rho(t) back-transform at time t
 
   int nn;
+  int rk2;
 } cartContext;
 
 /* HEY cartContextNew() should take xsize, ysize, and
@@ -66,6 +67,11 @@ extern void cart_forward(cartContext *ctx, double *rho, int xsize, int ysize);
 extern void cart_makecart(cartContext *ctx,
                           /* GLK interleaved pointx and pointy arrays */
                           double *pointxy, int npoints,
-                          int xsize, int ysize, double blur, int nn);
+                          int xsize, int ysize, double blur, int nn, int rk2);
+
+void cart_twosteps_rk2(cartContext *ctx,
+                   double *pointxy, int npoints,
+       double t, double h, int s, int xsize, int ysize,
+       double *errorp, double *drp, int *spp, int NN);
 
 #endif

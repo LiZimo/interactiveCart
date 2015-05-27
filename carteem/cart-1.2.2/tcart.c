@@ -395,8 +395,16 @@ void cart_velocity(const cartContext *ctx,
 void cart_twosteps(cartContext *ctx,
                   double *pointxy, int npoints,
 		   double t, double h, int s, int xsize, int ysize,
-		   double *errorp, double *drp, int *spp, int NN)
+		   double *errorp, double *drp, int *spp, int NN, int rk2)
 {
+
+ if (rk2 == 1) {//printf("got here in cart_twosteps \n"); 
+ cart_twosteps_rk2(ctx,
+                    pointxy, npoints,
+       t, h, s, xsize, ysize,
+        errorp, drp, spp, NN);}
+
+ else {
  int s0,s1,s2,s3,s4;
  int p;
  double rx1,ry1;
@@ -538,127 +546,130 @@ void cart_twosteps(cartContext *ctx,
  *drp =  sqrt(drsqmax);
  *spp = s4;
 }
+}
 
-// void cart_twosteps(cartContext *ctx,
-//                    double *pointxy, int npoints,
-//        double t, double h, int s, int xsize, int ysize,
-//        double *errorp, double *drp, int *spp)
-// {
-//   int s0,s1,s2;
-//   int p;
-//   double rx1,ry1;
-//   double rx2,ry2;
-//   double rx3,ry3;
-//   double v1x,v1y;
-//   double v2x,v2y;
-//   double k1x,k1y;
-//   double k2x,k2y;
-//   double dx1,dy1;
-//   double dx2,dy2;
-//   double dx12,dy12;
-//   double dxtotal,dytotal;
-//   double ex,ey;
-//   double esq,esqmax;
-//   double drsq,drsqmax;
+void cart_twosteps_rk2(cartContext *ctx,
+                   double *pointxy, int npoints,
+       double t, double h, int s, int xsize, int ysize,
+       double *errorp, double *drp, int *spp, int NN)
+{
 
-//   s0 = s;
-//   s1 = (s+1)%3;
-//   s2 = (s+2)%3;
+  //printf("got here in rk2 \n");
+  int s0,s1,s2;
+  int p;
+  double rx1,ry1;
+  double rx2,ry2;
+  double rx3,ry3;
+  double v1x,v1y;
+  double v2x,v2y;
+  double k1x,k1y;
+  double k2x,k2y;
+  double dx1,dy1;
+  double dx2,dy2;
+  double dx12,dy12;
+  double dxtotal,dytotal;
+  double ex,ey;
+  double esq,esqmax;
+  double drsq,drsqmax;
 
-//   /* Calculate the density field for the two new time slices */
+  s0 = s;
+  s1 = (s+1)%3;
+  s2 = (s+2)%3;
 
-//   cart_density(ctx,t+h,s1,xsize,ysize);
-//   cart_density(ctx,t+2*h,s2,xsize,ysize);
+  /* Calculate the density field for the two new time slices */
 
-//   /* Calculate the resulting velocity grids */
+  cart_density(ctx,t+h,s1,xsize,ysize);
+  cart_density(ctx,t+2*h,s2,xsize,ysize);
 
-//   cart_vgrid(ctx,s1,xsize,ysize);
-//   cart_vgrid(ctx,s2,xsize,ysize);
+  /* Calculate the resulting velocity grids */
 
-//   /* Do all three RK steps for each point in turn */
+  cart_vgrid(ctx,s1,xsize,ysize);
+  cart_vgrid(ctx,s2,xsize,ysize);
 
-//   esqmax = drsqmax = 0.0;
+  /* Do all three RK steps for each point in turn */
 
-//   for (p=0; p<npoints; p++) {
+  esqmax = drsqmax = 0.0;
 
-//     rx1 = pointxy[0 + 2*p];
-//     ry1 = pointxy[1 + 2*p];
+  for (p=0; p<npoints; p++) {
 
-//     /* Do the big combined (2h) RK step */
+    rx1 = pointxy[0 + 2*p];
+    ry1 = pointxy[1 + 2*p];
 
-//     cart_velocity(ctx,rx1,ry1,s0,xsize,ysize,&v1x,&v1y);
-//     k1x = 2*h*v1x;
-//     k1y = 2*h*v1y;
-//     cart_velocity(ctx,rx1+k1x,ry1+k1y,s2,xsize,ysize,&v2x,&v2y);
-//     k2x = 2*h*v2x;
-//     k2y = 2*h*v2y;
+    /* Do the big combined (2h) RK step */
 
-//     dx12 = 0.5*(k1x+k2x);
-//     dy12 = 0.5*(k1y+k2y);
+    cart_velocity(ctx,rx1,ry1,s0,xsize,ysize,&v1x,&v1y,NN);
+    k1x = 2*h*v1x;
+    k1y = 2*h*v1y;
+    cart_velocity(ctx,rx1+k1x,ry1+k1y,s2,xsize,ysize,&v2x,&v2y,NN);
+    k2x = 2*h*v2x;
+    k2y = 2*h*v2y;
 
-//     /* Do the first small RK step.  No initial call to cart_velocity() is done
-//      * because it would be the same as the one above, so there's no need
-//      * to do it again */
+    dx12 = 0.5*(k1x+k2x);
+    dy12 = 0.5*(k1y+k2y);
 
-//     k1x = h*v1x;
-//     k1y = h*v1y;
-//     cart_velocity(ctx,rx1+k1x,ry1+k1y,s1,xsize,ysize,&v2x,&v2y);
-//     k2x = h*v2x;
-//     k2y = h*v2y;
+    /* Do the first small RK step.  No initial call to cart_velocity() is done
+     * because it would be the same as the one above, so there's no need
+     * to do it again */
 
-//     dx1 = 0.5*(k1x+k2x);
-//     dy1 = 0.5*(k1y+k2y);
+    k1x = h*v1x;
+    k1y = h*v1y;
+    cart_velocity(ctx,rx1+k1x,ry1+k1y,s1,xsize,ysize,&v2x,&v2y,NN);
+    k2x = h*v2x;
+    k2y = h*v2y;
 
-//     /* Do the second small RK step */
+    dx1 = 0.5*(k1x+k2x);
+    dy1 = 0.5*(k1y+k2y);
 
-//     rx2 = rx1 + dx1;
-//     ry2 = ry1 + dy1;
+    /* Do the second small RK step */
 
-//     cart_velocity(ctx,rx2,ry2,s1,xsize,ysize,&v1x,&v1y);
-//     k1x = h*v1x;
-//     k1y = h*v1y;
-//     cart_velocity(ctx,rx2+k1x,ry2+k1y,s2,xsize,ysize,&v2x,&v2y);
-//     k2x = h*v2x;
-//     k2y = h*v2y;
+    rx2 = rx1 + dx1;
+    ry2 = ry1 + dy1;
 
-//     dx2 = 0.5*(k1x+k2x);
-//     dy2 = 0.5*(k1y+k2y);
+    cart_velocity(ctx,rx2,ry2,s1,xsize,ysize,&v1x,&v1y,NN);
+    k1x = h*v1x;
+    k1y = h*v1y;
+    cart_velocity(ctx,rx2+k1x,ry2+k1y,s2,xsize,ysize,&v2x,&v2y,NN);
+    k2x = h*v2x;
+    k2y = h*v2y;
 
-//     /* Calculate the (squared) error */
+    dx2 = 0.5*(k1x+k2x);
+    dy2 = 0.5*(k1y+k2y);
 
-//     ex = (dx1+dx2-dx12)/3;
-//     ey = (dy1+dy2-dy12)/3;
-//     esq = ex*ex + ey*ey;
-//     if (esq>esqmax) esqmax = esq;
+    /* Calculate the (squared) error */
 
-//     /* Update the position of the vertex using the more accurate (two small
-//      * steps) result, and deal with the boundary conditions.  This code
-//      * does 3rd-order "local extrapolation" (which just means taking
-//      * the estimate of the 3rd-order term above and adding it to our
-//      * 2nd-order result get a result accurate to the next highest order) */
+    ex = (dx1+dx2-dx12)/3;
+    ey = (dy1+dy2-dy12)/3;
+    esq = ex*ex + ey*ey;
+    if (esq>esqmax) esqmax = esq;
 
-//     dxtotal = dx1 + dx2 + ex;   // Last term is local extrapolation
-//     dytotal = dy1 + dy2 + ey;   // Last term is local extrapolation
-//     drsq = dxtotal*dxtotal + dytotal*dytotal;
-//     if (drsq>drsqmax) drsqmax = drsq;
+    /* Update the position of the vertex using the more accurate (two small
+     * steps) result, and deal with the boundary conditions.  This code
+     * does 3rd-order "local extrapolation" (which just means taking
+     * the estimate of the 3rd-order term above and adding it to our
+     * 2nd-order result get a result accurate to the next highest order) */
 
-//     rx3 = rx1 + dxtotal;
-//     ry3 = ry1 + dytotal;
+    dxtotal = dx1 + dx2 + ex;   // Last term is local extrapolation
+    dytotal = dy1 + dy2 + ey;   // Last term is local extrapolation
+    drsq = dxtotal*dxtotal + dytotal*dytotal;
+    if (drsq>drsqmax) drsqmax = drsq;
 
-//     if (rx3<0) rx3 = 0;
-//     else if (rx3>xsize) rx3 = xsize;
-//     if (ry3<0) ry3 = 0;
-//     else if (ry3>ysize) ry3 = ysize;
+    rx3 = rx1 + dxtotal;
+    ry3 = ry1 + dytotal;
 
-//     pointxy[0 + 2*p] = rx3;
-//     pointxy[1 + 2*p] = ry3;
+    if (rx3<0) rx3 = 0;
+    else if (rx3>xsize) rx3 = xsize;
+    if (ry3<0) ry3 = 0;
+    else if (ry3>ysize) ry3 = ysize;
 
-//   }
+    pointxy[0 + 2*p] = rx3;
+    pointxy[1 + 2*p] = ry3;
 
-//   *errorp = sqrt(esqmax);
-//   *drp =  sqrt(drsqmax);
-//   *spp = s2;
-// }
+  }
+
+  *errorp = sqrt(esqmax);
+  *drp =  sqrt(drsqmax);
+  *spp = s2;
+}
 
 /* Function to estimate the percentage completion */
 
@@ -677,7 +688,7 @@ int cart_complete(cartContext *ctx, double t)
  * to the cartogram */
 
 void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
-		   int xsize, int ysize, double blur, int NN)
+		   int xsize, int ysize, double blur, int NN, int rk2)
 {
   static const char me[]="cart_makecart";
   int i;
@@ -704,7 +715,7 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
 
     /* Do a combined (triple) integration step */
 
-    cart_twosteps(ctx,pointxy,npoints,t,h,s,xsize,ysize,&error,&dr,&sp, NN);
+    cart_twosteps(ctx,pointxy,npoints,t,h,s,xsize,ysize,&error,&dr,&sp, NN, rk2);
 
     /* Increase the time by 2h and rotate snapshots */
 

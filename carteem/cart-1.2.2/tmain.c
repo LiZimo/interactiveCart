@@ -121,6 +121,8 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig, int fff) {
       sizePad[i] = minElem(potential, rmndr_ind);
     }
   }
+  sizePad[0] = (int) 2*sizeOrig[0];
+  sizePad[1] = (int) 2*sizeOrig[1];
   printf("%s: %d %d\n", me, sizePad[0], sizePad[1]);
   //scanf("%s",tmp);
 }
@@ -250,6 +252,7 @@ main(int argc, const char *argv[]) {
   hestOptAdd(&hopt, "o", "fname", airTypeString, 1, 1, &outName, NULL,
              "output filename");
   hestOptAdd(&hopt, "nn", "nearestneighbor", airTypeInt, 1, 1, &(ctx->nn), "0", "for using nearest neighbor instead of bilinear interpolation");
+  hestOptAdd(&hopt, "rk2", "rung-kutta 2nd order", airTypeInt, 1, 1, &(ctx->rk2), "0", "for using 2nd order Rung-Kutta instead of 4th");
   hestParseOrDie(hopt, argc-1, argv+1, hparm,
                  me, cartInfo, AIR_TRUE, AIR_TRUE, AIR_TRUE);
   airMopAdd(mop, hopt, AIR_CAST(airMopper, hestOptFree), airMopAlways);
@@ -417,7 +420,7 @@ main(int argc, const char *argv[]) {
     }
     creategrid(gridxy,xsize,ysize);
     time0 = airTime();
-    cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0,ctx->nn);
+    cart_makecart(ctx,gridxy,(xsize+1)*(ysize+1),xsize,ysize,0.0,ctx->nn,ctx->rk2);
     time1 = airTime();
     if (repeats > 1) {
       printf("%s:              ... %g secs for %u/%u\n", me, time1-time0, repIdx, repeats);
