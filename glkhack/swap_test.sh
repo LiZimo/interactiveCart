@@ -1,4 +1,46 @@
 #!/usr/bin/env bash
+
+NN=0
+RK2=0
+VERBOSE=1
+USESWAP=0
+TRLO=8000
+
+while [[ $# > 0 ]]
+do
+key="$1"
+
+case $key in
+    -nn|--nearestneighbor)
+    NN="$2"
+    shift # past argument
+    ;;
+    -rk2|--rungkutta2)
+    RK2="$2"
+    shift # past argument
+    ;;
+    -v|--verbose)
+    VERBOSE="$2"
+    shift # past argument
+    ;;
+    -swap|--useswap)
+    USESWAP="$2"
+    ;;
+    -tr|--targetresolution)
+    TRLO="$2"
+    ;;
+    *)
+            # unknown option
+    ;;
+esac
+shift # past argument or value
+done
+if [[ -n $1 ]]; then
+    echo "Last line of file specified as non-opt/last argument:"
+    tail -1 $1
+fi
+
+
 set -o errexit
 set -o nounset
 JUNK=""
@@ -19,9 +61,6 @@ function Doo {
   fi
 }
 
-NN="$1"
-RK2="$2"
-TRLO="$3"
 
 # http://eric.clst.org/wupl/Stuff/gz_2010_us_040_00_500k.json
 # http://eric.clst.org/wupl/Stuff/gz_2010_us_050_00_500k.json
@@ -40,10 +79,14 @@ T2N="../code/tiff2nhdr"
 #TE="-2160000 -1580000 2470000 1270000"
 
 # this gives more space to the north-east
-#TE="-2160000 -1700000 2700000 1500000"
+TE="-2160000 -1700000 2700000 1500000"
 
 #swap the TE for tests
-TE="-1700000 -2160000 1500000 2700000" 
+if [ $USESWAP = "1" ] 
+then
+  echo "using swap"
+  TE="-1700000 -2160000 1500000 2700000" 
+fi
 
 
 
@@ -54,8 +97,11 @@ TE="-1700000 -2160000 1500000 2700000"
 if true; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
   Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL"
-  Doo "../code/CoordSwap state.json state1.json"
-  Doo "rm -f state.json; mv state1.json state.json"
+  if [ $USESWAP = "1" ] 
+  then
+    Doo "../code/CoordSwap state.json state1.json"
+    Doo "rm -f state.json; mv state1.json state.json"
+  fi
   Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff"
   Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr"
 
@@ -105,7 +151,7 @@ VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
 OCART="../carteem/cart-1.2.2/ocart"
 TCART="../carteem/cart-1.2.2/tcart"
 
-Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst.txt -v 1 -or rho.nrrd -te $TE -o disp.nrrd -nn $NN -rk2 $RK2"
+Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst.txt -v $VERBOSE -or rho.nrrd -te $TE -o disp.nrrd -nn $NN -rk2 $RK2"
 
 # this part at the end takes the cart output and makes a cartogram with it
 Doo "../code/CoordShift state.json disp.nrrd equal_area.json"
