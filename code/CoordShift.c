@@ -6,7 +6,8 @@
 #include "teem/meet.h"
 #include "../jsmn/jsmn.h"
 /* compile with:
-gcc -Wall -O2 -o CoordShift CoordShift.c -I $TEEM/include -L $TEEM/lib -L ../jsmn -lteem -lpng -lz -ljsmn
+gcc -std=c99 -Wall -O2 -o CoordShift CoordShift.c -I $TEEM/include -L $TEEM/lib -L ../jsmn -lteem -lpng -lz -ljsmn -lm -lbz2
+gcc -std=c99 -Wall -O2 -o CoordSwap CoordSwap.c -I $TEEM/include -L $TEEM/lib -L ../jsmn -lteem -lpng -lz -ljsmn 
 */
 
 /* 3-vector U = 3x3 matrix M time 3-vector V */
@@ -179,6 +180,8 @@ for (int k = 0; k < r-2; k++) {
 
 
         MV3_MUL(world_final, ItoW, index_final);
+        if (isnan(world_final[0]) || isinf(world_final[0])) {world_final[0] = 0;}
+        if (isnan(world_final[1]) || isinf(world_final[1]))  {world_final[1] = 0;}
 
         //printf("diffmap val: %f %f \n", diff_map[(y1*columns + x1)*2], diff_map[(y1*columns + x2)*2]);
         char newx_string[length1];
@@ -186,7 +189,6 @@ for (int k = 0; k < r-2; k++) {
 
         snprintf(newx_string, length1, "%f", world_final[0]);
         snprintf(newy_string, length2,"%f", world_final[1]);
-
 
 
         for (int e = 0; e < length1; e++) {
