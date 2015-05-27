@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 NN=0
 RK2=0
 VERBOSE=1
@@ -84,7 +85,6 @@ TE="-2160000 -1700000 2700000 1500000"
 #swap the TE for tests
 if [ $USESWAP = "1" ] 
 then
-  echo "using swap"
   TE="-1700000 -2160000 1500000 2700000" 
 fi
 
@@ -96,29 +96,29 @@ fi
 #TRLO=8000
 if true; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
-  Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL"
+  Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL" > /dev/null
   if [ $USESWAP = "1" ] 
   then
-    Doo "../code/CoordSwap state.json state1.json"
-    Doo "rm -f state.json; mv state1.json state.json"
+    Doo "../code/CoordSwap state.json state1.json" > /dev/null
+    Doo "rm -f state.json; mv state1.json state.json" > /dev/null
   fi
-  Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff"
-  Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr"
+  Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff" > /dev/null
+  Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr" > /dev/null
 
   ### Just for high-res state and county maps: reproject and rasterize jsons
   # if false: skip; if true: do it
   if false; then
     TR=1900
-    Doo "rm -f county.json; ogr2ogr -f geojson -t_srs \"$PROJ\" county.json $COUNT_OUTL"
+    Doo "rm -f county.json; ogr2ogr -f geojson -t_srs \"$PROJ\" county.json $COUNT_OUTL" > /dev/null
     # Slowly lowering TR, and counting the number of unique counties rasterized,
     # the number seemed to max out at 3109 (TR=1950 acheives this)
     # This number was confirmed via looking through the json file for
     # things NOT in alaska, hawaii, and puerto rico
-    Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a STATE state.json state.tiff"
-    Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a COUNTY county.json county.tiff"
-    Doo "$T2N -i state.tiff -co false -o state.nhdr"
-    Doo "$T2N -i county.tiff -co false -o county.nhdr"
-    Doo "unu 2op x 1000 state.nhdr | unu 2op + - county.nhdr -o state-county.png"
+    Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a STATE state.json state.tiff" > /dev/null
+    Doo "gdal_rasterize -tr $TR $TR -te $TE -ot UInt16 -a COUNTY county.json county.tiff" > /dev/null
+    Doo "$T2N -i state.tiff -co false -o state.nhdr" > /dev/null
+    Doo "$T2N -i county.tiff -co false -o county.nhdr" > /dev/null
+    Doo "unu 2op x 1000 state.nhdr | unu 2op + - county.nhdr -o state-county.png" > /dev/null
   fi
 fi # end reproject and rasterize
 
@@ -149,11 +149,11 @@ echo "0 -1" | unu inset -i subst.txt -s - -min 0 0 -o subst.txt
 
 VGRIND="valgrind --leak-check=full --show-leak-kinds=all --dsymutil=yes"
 OCART="../carteem/cart-1.2.2/ocart"
-TCART="../carteem/cart-1.2.2/tcart"
+TCART="../carteem/cart-1.2.2/tcart" 
 
 Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst.txt -v $VERBOSE -or rho.nrrd -te $TE -o disp.nrrd -nn $NN -rk2 $RK2"
 
 # this part at the end takes the cart output and makes a cartogram with it
-Doo "../code/CoordShift state.json disp.nrrd equal_area.json"
-Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot byte -a STATE equal_area.json statelo-cart-swap.tiff"
-Doo "$T2N -i statelo-cart-swap.tiff -co false -o statelo-cart.nhdr"
+Doo "../code/CoordShift state.json disp.nrrd equal_area.json" > /dev/null
+Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot byte -a STATE equal_area.json statelo-cart-swap.tiff" > /dev/null
+Doo "$T2N -i statelo-cart-swap.tiff -co false -o statelo-cart.nhdr" > /dev/null
