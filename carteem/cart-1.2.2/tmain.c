@@ -68,13 +68,16 @@ void creategrid(double *gridxy, int xsize, int ysize) {
 }
 
 void
-findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig, int fff) {
+findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig, int fff, int noop) {
   static const char me[]="findPadSize";
   //char tmp[5];
 
   sizePad[0] = sizeOrig[0];
   sizePad[1] = sizeOrig[1];
-  if (!fff) {
+  if (noop) {
+    sizePad[0] = (int) sizeOrig[0];
+    sizePad[1] = (int) sizeOrig[1];
+  } else if (!fff) {
     sizePad[0] = 1.5*sizeOrig[0];
     sizePad[1] = 1.5*sizeOrig[1];
   } else {
@@ -121,8 +124,6 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig, int fff) {
       sizePad[i] = minElem(potential, rmndr_ind);
     }
   }
-  sizePad[0] = (int) sizeOrig[0];
-  sizePad[1] = (int) sizeOrig[1];
   printf("%s: %d %d\n", me, sizePad[0], sizePad[1]);
   //scanf("%s",tmp);
 }
@@ -198,7 +199,7 @@ main(int argc, const char *argv[]) {
   double time0, time1, temm[4];
   char *wispath;
   FILE *fwise;
-  int fftFriendly;
+  int noop, fftFriendly;
 
   ctx = cartContextNew();
   airMopAdd(mop, ctx, (airMopper)cartContextNix, airMopAlways);
@@ -210,6 +211,8 @@ main(int argc, const char *argv[]) {
   hestOptAdd(&hopt, "ff", NULL, airTypeInt, 0, 0, &fftFriendly, NULL,
              "by giving this option, the input image size is optimized "
              "to be fft-friendly (powers of 2 and 3)");
+  hestOptAdd(&hopt, "nop", NULL, airTypeInt, 0, 0, &noop, NULL,
+             "disable all clever padding");
   hestOptAdd(&hopt, "s", "subst", airTypeOther, 1, 1, &nsub, NULL,
              "substitution table, to apply to \"-i\" map to generate "
              "the initial density map", NULL, NULL, nrrdHestNrrd);
@@ -319,7 +322,7 @@ main(int argc, const char *argv[]) {
   sizeOrig[1] = (unsigned int)nmap->axis[1].size;
 
   //printf("%u %u \n", sizeOrig[0], sizeOrig[1]);
-  findPadSize(sizePad, sizeOrig, fftFriendly);
+  findPadSize(sizePad, sizeOrig, fftFriendly, noop);
   ptrdiff_t padmin[3], padmax[3];
   padmin[0] = -(ptrdiff_t)((sizePad[0] - sizeOrig[0])/2);
   padmin[1] = -(ptrdiff_t)((sizePad[1] - sizeOrig[1])/2);
