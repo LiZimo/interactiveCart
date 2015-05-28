@@ -10,7 +10,8 @@ gcc -std=c99 -Wall -O2 -o CoordSwap CoordSwap.c -I $TEEM/include -L $TEEM/lib -L
 */
 
 /* 3-vector U = 3x3 matrix M time 3-vector V */
-
+#define min(a, b) (((a) < (b)) ? (a) : (b)) 
+#define max(a, b) (((a) > (b)) ? (a) : (b)) 
 
 int main(int argc, char** argv) {  
 /// arguments are in order: 1-world_space_geojson   2-cart map as a nrrd  3-outfile_name
@@ -89,21 +90,22 @@ for (int k = 0; k < r-2; k++) {
     	// First, read in the x and y coordinates into coordx and coord y
         int length1 = tokens[k+1].end - tokens[k+1].start;
         int length2 = tokens[k+2].end - tokens[k+2].start;
-        char num1[length1];
-        char num2[length2];
-
+        char num1[length2];
+        char num2[length1];
+        int minlength = min(length1, length2);
         //printf("length 1, length2: %d %d \n", length1, length2);
-        memcpy(num2, &geojson[tokens[k+1].start], length1);
-        memcpy(num1, &geojson[tokens[k+2].start], length2);
+
+        memcpy(num2, &geojson[tokens[k+1].start],length1);
+        memcpy(num1, &geojson[tokens[k+2].start],length2);
 
         for (int e = 0; e < length1; e++) {
-            if (e < strlen(num1))
+            if (e < minlength)
                 geojson[tokens[k+1].start + e] = num1[e]; 
             else{ geojson[tokens[k+1].start + e] = '0';}
             //if (geojson[tokens[k+1].start + e] == '\0') {geojson[tokens[k+1].start + e] = '0';}
         }
         for (int ll = 0; ll < length2; ll++) {
-            if (ll <strlen(num2)) 
+            if (ll < minlength) 
                 geojson[tokens[k+2].start + ll] = num2[ll]; 
             else{ geojson[tokens[k+2].start + ll] = '0';}
         }
