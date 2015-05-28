@@ -121,8 +121,8 @@ findPadSize(unsigned int *sizePad, const unsigned int *sizeOrig, int fff) {
       sizePad[i] = minElem(potential, rmndr_ind);
     }
   }
-  sizePad[0] = (int) 2*sizeOrig[0];
-  sizePad[1] = (int) 2*sizeOrig[1];
+  sizePad[0] = (int) sizeOrig[0];
+  sizePad[1] = (int) sizeOrig[1];
   printf("%s: %d %d\n", me, sizePad[0], sizePad[1]);
   //scanf("%s",tmp);
 }
