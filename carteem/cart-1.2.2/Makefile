@@ -36,6 +36,9 @@ LPATH += -L$(TEEM)/lib
 
 all: ocart tcart
 
+tcart.o tmain.o: tcart.h
+ocart.o omain.o: ocart.h
+
 .c.o:
 	$(CC) -c $(CFLAGS) $(IPATH) -o $@ $<
 
