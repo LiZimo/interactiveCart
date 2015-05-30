@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <fftw3.h>
-// #include <teem/meet.h>
+#include <teem/meet.h>
 
 /* Constants */
 
@@ -24,7 +24,7 @@
 #define PI 3.1415926535897932384626
 
 typedef struct {
-  int savesnaps;        // save snapshots
+  int savesnaps[3];     // save snapshots for 0:rho 1:vel 2:displacement
   int verbosity;
   int rigor;            /* of fftw plan construction, with values from the
                            nrrdFFTWPlanRigor* enum */
@@ -37,6 +37,8 @@ typedef struct {
   double *rhot[5];      // Pop density at time t (five snaps needed)
   double *fftrho;       // FT of initial density
   double *fftexpt;      // FT of density at time t
+  Nrrd *ngrid;          /* to wrap around points (displacement field)
+                           during computation */
 
   /* GLK removed previous the "2D array" structure of vxt and vyt, which
      halved the number of memory loads in their use, and also interleaved

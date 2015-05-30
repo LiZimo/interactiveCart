@@ -236,8 +236,10 @@ main(int argc, const char *argv[]) {
              "final iteration.");
   hestOptAdd(&hopt, "v", "verbosity", airTypeInt, 1, 1, &(ctx->verbosity), "0",
              "level of printf verbosity");
-  hestOptAdd(&hopt, "snap", NULL, airTypeInt, 0, 0, &(ctx->savesnaps), NULL,
-             "save snapshots of the density computed via fft");
+  hestOptAdd(&hopt, "snap", "rho vel disp", airTypeBool, 3, 3, ctx->savesnaps,
+             "false false false",
+             "save snapshots of quantities used for computation: the "
+             "scalar density rho, the velocity field, and the displacement");
   hestOptAdd(&hopt, "pr", "rigor", airTypeEnum, 1, 1, &(ctx->rigor), "est",
              "rigor with which fftw plan is constructed. Options are:\n "
              "\b\bo \"e\", \"est\", \"estimate\": only an estimate\n "
@@ -414,6 +416,7 @@ main(int argc, const char *argv[]) {
   vy = nrho->axis[1].spaceDirection[1];
   ngrid->spaceOrigin[0] -= 0.5*vx;
   ngrid->spaceOrigin[1] -= 0.5*vy;
+  ctx->ngrid = ngrid;
 
   /* Make the cartogram */
   unsigned int repIdx;
