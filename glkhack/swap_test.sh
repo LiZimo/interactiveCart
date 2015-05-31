@@ -81,7 +81,7 @@ T2N="../code/tiff2nhdr"
 
 # this gives more space to the north-east
 TE="-2160000 -1700000 2700000 1500000"
-
+TE_O="-2160000 -1700000 2700000 1500000"
 #swap the TE for tests
 if [ $USESWAP = "1" ] 
 then
@@ -97,13 +97,21 @@ fi
 if true; then
   PROJ="+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=39.8 +lon_0=-98.6 +datum=NAD83 +units=m +no_defs"
   Doo "rm -f state.json; ogr2ogr -f geojson -t_srs \"$PROJ\" state.json $STATE_OUTL" > /dev/null
+  ##if [ $USESWAP = "1" ] 
+  ##then
+  ##  Doo "../code/CoordSwap state.json state1.json" > /dev/null
+  ##  Doo "rm -f state.json; mv state1.json state.json" > /dev/null
+  ##fi
+
+
+  Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE_O -ot UInt16 -a STATE state.json statelo.tiff" > /dev/null
+  Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr" > /dev/null
   if [ $USESWAP = "1" ] 
   then
-    Doo "../code/CoordSwap state.json state1.json" > /dev/null
-    Doo "rm -f state.json; mv state1.json state.json" > /dev/null
+    Doo "unu flip -i statelo.nhdr -a 1 | unu swap -a 0 1 | unu flip -a 1 -o statelo1.nhdr"
+    Doo "unu quantize -i statelo1.nhdr -b 8 -o swapped.png"
+    Doo "rm statelo.nhdr; mv statelo1.nhdr statelo.nhdr"
   fi
-  Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE state.json statelo.tiff" > /dev/null
-  Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr" > /dev/null
 
   ### Just for high-res state and county maps: reproject and rasterize jsons
   # if false: skip; if true: do it
@@ -155,5 +163,14 @@ Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst.txt -v $VERBOSE -or rho
 
 # this part at the end takes the cart output and makes a cartogram with it
 Doo "../code/CoordShift state.json disp.nrrd equal_area.json" > /dev/null
-Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot byte -a STATE equal_area.json statelo-cart-swap.tiff" > /dev/null
-Doo "$T2N -i statelo-cart-swap.tiff -co false -o statelo-cart.nhdr" > /dev/null
+if [ $USESWAP = "1" ] 
+then
+  Doo "rm equal_area.json"
+  Doo "../code/CoordShift-swap state.json disp.nrrd equal_area.json" > /dev/null
+fi
+
+Doo "gdal_rasterize -tr $TRLO $TRLO -te $TE -ot UInt16 -a STATE equal_area.json statelo-cart-swap.tiff" > /dev/null
+
+Doo "$T2N -i statelo-cart-swap.tiff -co false -o statelo-cart-swap.nhdr" > /dev/null
+Doo "unu quantize -i statelo-cart-swap.nhdr -b 8 -o statelo-cart-swap.png"
+Doo "unu flip -i statelo-cart-swap.nhdr -a 1 | unu swap -a 0 1 | unu flip -a 1 | unu quantize -b 8 -o flipped.png"

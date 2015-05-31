@@ -4,10 +4,8 @@
 NN=0
 RK2=0
 VERBOSE=1
-XSZE=512
-YSZE=512
-NUM_REGIONS=5
-TRLO=1
+XSZE=10
+YSZE=5
 
 while [[ $# > 0 ]]
 do
@@ -34,9 +32,6 @@ case $key in
     ;;
     -ysize|--ysize)
     YSZE="$2"
-    ;;
-    -num|--numRectangles)
-    NUM_REGIONS="$2"
     ;;
     *)
             # unknown option
@@ -73,7 +68,7 @@ function Doo {
   fi
 }
 
-Doo "python ../code/synth_data.py $NUM_REGIONS $XSZE $YSZE synth.json"
+Doo "python ../code/little_squares.py $XSZE $YSZE synth.json"
 Doo "chmod 755 synth.json"
 
 # http://eric.clst.org/wupl/Stuff/gz_2010_us_040_00_500k.json
@@ -93,11 +88,13 @@ T2N="../code/tiff2nhdr"
 #TE="-2160000 -1580000 2470000 1270000"
 
 # this gives more space to the north-east
-TE="$((-$XSZE/2 - 50)) $((-$YSZE/2 - 50)) $(($XSZE/2 + 50)) $(($YSZE/2 + 50))"
+TE="0 0 $(($XSZE*8)) $(($YSZE*8))"
 
 #swap the TE for tests
-TE_S="$((-$YSZE/2-50)) $((-$XSZE/2-50)) $(($YSZE/2+50)) $(($XSZE/2+50))"
+TE_S="0 0 $(($YSZE*8)) $(($XSZE*8))"
 
+TS="$(($XSZE*8-1)) $(($YSZE*8-1))"
+TS_S="$(($YSZE*8-1)) $(($XSZE*8-1))"
 
 ### reproject and rasterize json files
 # if false: skip; if true: do it
@@ -105,15 +102,18 @@ TE_S="$((-$YSZE/2-50)) $((-$XSZE/2-50)) $(($YSZE/2+50)) $(($XSZE/2+50))"
 if true; then
 
 
-  Doo "../code/CoordSwap synth.json synth_swap.json" > /dev/null
+  #Doo "../code/CoordSwap synth.json synth_swap.json" > /dev/null
 
-  Doo "gdal_rasterize -ts $XSZE $YSZE -te $TE -ot UInt16 -a STATE synth.json statelo.tiff" 
-  Doo "gdal_rasterize -ts $XSZE $YSZE -te $TE -ot byte -a STATE synth.json synth1.tiff" 
+  Doo "gdal_rasterize -ts $TS -te $TE -ot UInt16 -a STATE synth.json statelo.tiff" 
   Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr" > /dev/null
 
-  Doo "gdal_rasterize -ts $XSZE $YSZE -te $TE_S -ot UInt16 -a STATE synth_swap.json statelo_swap.tiff" 
-  Doo "gdal_rasterize -ts $XSZE $YSZE -te $TE_S -ot byte -a STATE synth_swap.json synth1_swap.tiff" 
-  Doo "$T2N -i statelo_swap.tiff -co false -o statelo_swap.nhdr" > /dev/null
+
+  Doo "unu flip -i statelo.nhdr -a 1 | unu swap -a 0 1 | unu flip -a 1 -o statelo_swap.nhdr"
+  Doo "unu quantize -i statelo.nhdr -b 8 -o synth.png"
+
+  ##Doo "gdal_rasterize -ts $TS_S -te $TE_S -ot UInt16 -a STATE synth_swap.json statelo_swap.tiff" 
+  ##Doo "gdal_rasterize -ts $TS_S -te $TE_S -ot byte -a STATE synth_swap.json synth1_swap.tiff" 
+  ##Doo "$T2N -i statelo_swap.tiff -co false -o statelo_swap.nhdr" > /dev/null
 fi
   ### Just for high-res state and county maps: reproject and rasterize jsons
   # if false: skip; if true: do it
@@ -134,15 +134,17 @@ TCART="../carteem/cart-1.2.2/tcart"
 
 Doo "rm -f disp.nrrd"
 Doo "rm -f disp_swap.nrrd"
-Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst_synth.txt -v $VERBOSE -or rho.nrrd -te $TE -o disp.nrrd -nn $NN -rk2 $RK2"
+Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst_synth.txt -v $VERBOSE -or rho.nrrd -te $TE -o disp.nrrd -nn $NN -rk2 $RK2 -nop"
 
-Doo "$TCART -w wisdom.txt -pr m -i statelo_swap.nrrd -s subst_synth.txt -v $VERBOSE -or rho_swap.nrrd -te $TE -o disp_swap.nrrd -nn $NN -rk2 $RK2"
+Doo "$TCART -w wisdom.txt -pr m -i statelo_swap.nrrd -s subst_synth.txt -v $VERBOSE -or rho_swap.nrrd -te $TE_S -o disp_swap.nrrd -nn $NN -rk2 $RK2 -nop"
 
 # this part at the end takes the cart output and makes a cartogram with it
 Doo "../code/CoordShift synth.json disp.nrrd equal_area.json" > /dev/null
-Doo "gdal_rasterize -ts $XSZE $YSZE -te $TE -ot byte -a STATE equal_area.json synth_cart.tiff" 
+Doo "gdal_rasterize -ts $TS -te $TE -ot UInt16 -a STATE equal_area.json synth_cart.tiff" 
 Doo "$T2N -i synth_cart.tiff -co false -o synth_cart.nhdr" > /dev/null
+Doo "unu quantize -i synth_cart.nhdr -b 8 -o synth_cart.png"
 
-Doo "../code/CoordShift synth_swap.json disp_swap.nrrd equal_area_swap.json" > /dev/null
-Doo "gdal_rasterize -ts $XSZE $YSZE -te $TE_S -ot byte -a STATE equal_area_swap.json synth_cart_swap.tiff" 
+Doo "../code/CoordShift-swap synth.json disp_swap.nrrd equal_area_swap.json" > /dev/null
+Doo "gdal_rasterize -ts $TS_S -te $TE_S -ot UInt16 -a STATE equal_area_swap.json synth_cart_swap.tiff" 
 Doo "$T2N -i synth_cart_swap.tiff -co false -o synth_cart_swap.nhdr" > /dev/null
+Doo "unu quantize -i synth_cart_swap.nhdr -b 8 -o synth_cart_swap.png"

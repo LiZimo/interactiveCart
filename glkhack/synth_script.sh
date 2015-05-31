@@ -64,18 +64,18 @@ echo "P is $P"
 while [ $N -le 11 ] 
 do
   echo "$N"
-  SIZE1=$((2**N-1))
+  SIZE1=$((2**N))
   EXPONENT=$((2*P - N))
 
-  SIZE2=$((2**$EXPONENT - 1))
+  SIZE2=$((2**$EXPONENT ))
 
 
-  INPUTSIZE1=$(($SIZE1))
-  INPUTSIZE2=$(($SIZE2))
+  INPUTSIZE1=$(($SIZE1/8))
+  INPUTSIZE2=$(($SIZE2/8))
   
   FILENAME="$N.$P.REG.txt"
 
-  Doo "./synth_test.sh -xsize $INPUTSIZE1 -ysize $INPUTSIZE2 -nn $NN -rk2 $RK2 -num $NUM_REGIONS > outputs/$FILENAME"
+  Doo "./synth_test.sh -xsize $INPUTSIZE1 -ysize $INPUTSIZE2 -nn $NN -rk2 $RK2 > outputs/$FILENAME"
 
   N=$(($N + 1))
 done
