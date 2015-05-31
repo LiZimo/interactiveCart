@@ -43,7 +43,9 @@ cartContextNew() {
   if (ctx) {
     ctx->initH = 0.001;
     ctx->targetError = 0.01;
-    ctx->savesnaps = AIR_FALSE;
+    ctx->savesnaps[0] = AIR_FALSE;
+    ctx->savesnaps[1] = AIR_FALSE;
+    ctx->savesnaps[2] = AIR_FALSE;
     for (si=0; si<4; si++) {
       ctx->rhot[si] = NULL;
       //ctx->vxyt[si] = NULL;
@@ -53,6 +55,7 @@ cartContextNew() {
     ctx->fftrho = NULL;
     ctx->fftexpt = NULL;
     ctx->preexp = NULL;
+    ctx->ngrid = NULL;
   }
   return ctx;
 }
@@ -93,11 +96,11 @@ void cart_makews(cartContext *ctx, int xsize, int ysize)
      NOTE: these macros assume xsp=1+xsize and/or ysp=1+ysize.
      Different VIDX below are annotated with axes ordered fast-to-slow
   */
-   //#define VIDX(C,X,Y,S) ((S) + 5*((C) + 2*((X) + xsp*(Y)))) // S C X Y
-#define VIDX(C,X,Y,S) ((C) + 2*((S) + 5*((X) + xsp*(Y)))) // C S X Y
+#define VIDX(C,X,Y,S) ((S) + 5*((C) + 2*((X) + xsp*(Y)))) // S C X Y
+  //#define VIDX(C,X,Y,S) ((C) + 2*((S) + 5*((X) + xsp*(Y)))) // C S X Y
   //#define VIDX(C,X,Y,S) ((C) + 2*((X) + xsp*((Y) + ysp*(S)))) // C X Y S
-   //#define VIDX(C,X,Y,S) ((C) + 2*((X) + xsp*((S) + 5*(Y)))) // C X S Y
-   //#define VIDX(C,X,Y,S) ((S) + 5*((C) + 2*((Y) + ysp*(X)))) // S C Y X  (definitely slower)
+  //#define VIDX(C,X,Y,S) ((C) + 2*((X) + xsp*((S) + 5*(Y)))) // C X S Y
+  //#define VIDX(C,X,Y,S) ((S) + 5*((C) + 2*((Y) + ysp*(X)))) // S C Y X  (definitely slower)
 
   ctx->preexp = malloc(xsize*sizeof(double));
 
@@ -180,9 +183,8 @@ void cart_density(cartContext *ctx, double t, int s, int xsize, int ysize)
 
   /* Perform the back-transform */
   fftw_execute(ctx->rhotplan[s]);
-  if (ctx->savesnaps) {
+  if (ctx->savesnaps[0]) {
     char fname[128], key[128], val[128];
-    fprintf(stderr, "%s(%g,%d)\n", me, t, s);
     sprintf(fname, "snaprho-%04u.nrrd", snapi);
     Nrrd *nsnap = nrrdNew();
     sprintf(key, "difftime");
@@ -285,7 +287,7 @@ void cart_vgrid(cartContext *ctx, int s, int xsize, int ysize)
     }
   }
 
-  if (ctx->savesnaps) {
+  if (ctx->savesnaps[1]) {
     char fname[128];
     sprintf(fname, "snapvel-%04u.nrrd", snapi);
     Nrrd *nsnap = nrrdNew();
@@ -393,7 +395,7 @@ void cart_velocity(const cartContext *ctx,
  */
 
 void cart_twosteps(cartContext *ctx,
-                  double *pointxy, int npoints,
+                   double *pointxy, int npoints,
 		   double t, double h, int s, int xsize, int ysize,
 		   double *errorp, double *drp, int *spp, int NN, int rk2)
 {
@@ -698,6 +700,7 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
   double t,h;
   double error,dr;
   double desiredratio;
+  static unsigned int snapi=0;
 
   /* Calculate the initial density and velocity for snapshot zero */
 
@@ -712,6 +715,20 @@ void cart_makecart(cartContext *ctx, double *pointxy, int npoints,
   h = ctx->initH;
   loopi = 0;
   do {
+
+    if (ctx->savesnaps[2]) {
+      char fname[128];
+      sprintf(fname, "snapdsp-%04u.nrrd", snapi);
+      if (nrrdSave(fname, ctx->ngrid, NULL)) {
+        char *err = biffGetDone(NRRD);
+        fprintf(stderr, "%s: couldn't save displacement: %s\n", me, err);
+        free(err);
+      }
+      if (ctx->verbosity > 1) {
+        fprintf(stderr, "%s: saved %s\n", me, fname);
+      }
+      snapi++;
+    }
 
     /* Do a combined (triple) integration step */
 
