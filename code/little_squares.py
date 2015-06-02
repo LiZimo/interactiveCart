@@ -15,7 +15,6 @@ import geojson
 from geojson import Polygon, dumps
 from geojson import Feature
 from geojson import FeatureCollection
-from random import uniform
 import sys
 
 if (len(sys.argv)!=4):
@@ -52,25 +51,25 @@ def one_square(x_offset, y_offset, square_size, numpoints):
     
     
     
-    for i in range(numpoints):
+    for i in xrange(numpoints):
         point = (bottom_left[0], bottom_left[1] + step*(i+1))
         square.append(point)
     
     square.append(top_left)
     
-    for i in range(numpoints):
+    for i in xrange(numpoints):
         point = (top_left[0] + step*(i+1), top_left[1])
         square.append(point)  
     
     square.append(top_right)
     
-    for i in range(numpoints):
+    for i in xrange(numpoints):
         point = (top_right[0], top_right[1] - step*(i+1))
         square.append(point)
     
     square.append(bottom_right)
     
-    for i in range(numpoints):
+    for i in xrange(numpoints):
         point = (bottom_right[0] - step*(i+1), bottom_right[1])
         square.append(point)
     
@@ -82,20 +81,27 @@ def one_square(x_offset, y_offset, square_size, numpoints):
 def getCoords(imsizex, imsizey, square_size, numpoints1):
     coordlist = [];    
     
-    for i in range(imsizex):
-        for j in range(imsizey):
+    for i in xrange(imsizex):
+        for j in xrange(imsizey):
             square = one_square(i, j, square_size, numpoints1)
             coordlist.append(square)
     return coordlist
 
     
-def make_feature_collection(coordlist):
+def make_feature_collection(imsizex, imsizey, coordlist):
     features = [];
-    for i in range(len(coordlist)):
+    flag = 1
+    for i in xrange(imsizex):
+        flag = -1*flag
+        if flag == -1:
+            therange = xrange(imsizey - 1, -1, -1);
+        else:
+            therange = xrange(imsizey);
+        for j in therange:
         
-        square = make_square(coordlist[i])
-        feature = Feature(geometry=square, properties={"STATE":str((i+1)%2 + 1)})
-        features.append(feature)
+            square = make_square(coordlist[i*imsizey + j])
+            feature = Feature(geometry=square, properties={"STATE":str((imsizey*i + j)%2 + 1)})
+            features.append(feature)
     
     
     return FeatureCollection(features)
@@ -103,10 +109,10 @@ def make_feature_collection(coordlist):
 
 def make_geojson(imsizex, imsizey, outfile, numpoints, square_size):
     coordlist = getCoords(imsizex, imsizey, square_size, numpoints)
-    collection = make_feature_collection(coordlist)
+    collection = make_feature_collection(imsizex, imsizey, coordlist)
     out = dumps(collection)
     f = open(outfile, 'w')
     f.write(out)
     return collection
     
-make_geojson(xsize, ysize, outfile, 10, 2)
+make_geojson(xsize, ysize, outfile, 1, 2)

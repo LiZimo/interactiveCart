@@ -10,6 +10,10 @@ do
 key="$1"
 
 case $key in
+    -p|--integer)
+    P="$2"
+    shift # past argument
+    ;;
     -nn|--nearestneighbor)
     NN="$2"
     shift # past argument
@@ -75,7 +79,7 @@ do
   
   FILENAME="$N.$P.REG.txt"
 
-  Doo "./synth_test.sh -xsize $INPUTSIZE1 -ysize $INPUTSIZE2 -nn $NN -rk2 $RK2 > outputs/$FILENAME"
+  Doo "./synth_test.sh -xsize $INPUTSIZE1 -ysize $INPUTSIZE2 -nn $NN -rk2 $RK2 |tee outputs/$FILENAME stdout"
 
   N=$(($N + 1))
 done

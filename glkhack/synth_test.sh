@@ -93,8 +93,8 @@ TE="0 0 $(($XSZE*8)) $(($YSZE*8))"
 #swap the TE for tests
 TE_S="0 0 $(($YSZE*8)) $(($XSZE*8))"
 
-TS="$(($XSZE*8-1)) $(($YSZE*8-1))"
-TS_S="$(($YSZE*8-1)) $(($XSZE*8-1))"
+TS="$(($XSZE*8)) $(($YSZE*8))"
+TS_S="$(($YSZE*8)) $(($XSZE*8))"
 
 ### reproject and rasterize json files
 # if false: skip; if true: do it
@@ -105,7 +105,7 @@ if true; then
   #Doo "../code/CoordSwap synth.json synth_swap.json" > /dev/null
 
   Doo "gdal_rasterize -ts $TS -te $TE -ot UInt16 -a STATE synth.json statelo.tiff" 
-  Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr" > /dev/null
+  Doo "$T2N -i statelo.tiff -co false -o statelo.nhdr" 
 
 
   Doo "unu flip -i statelo.nhdr -a 1 | unu swap -a 0 1 | unu flip -a 1 -o statelo_swap.nhdr"
@@ -139,12 +139,12 @@ Doo "$TCART -w wisdom.txt -pr m -i statelo.nrrd -s subst_synth.txt -v $VERBOSE -
 Doo "$TCART -w wisdom.txt -pr m -i statelo_swap.nrrd -s subst_synth.txt -v $VERBOSE -or rho_swap.nrrd -te $TE_S -o disp_swap.nrrd -nn $NN -rk2 $RK2 -nop"
 
 # this part at the end takes the cart output and makes a cartogram with it
-Doo "../code/CoordShift synth.json disp.nrrd equal_area.json" > /dev/null
-Doo "gdal_rasterize -ts $TS -te $TE -ot UInt16 -a STATE equal_area.json synth_cart.tiff" 
-Doo "$T2N -i synth_cart.tiff -co false -o synth_cart.nhdr" > /dev/null
-Doo "unu quantize -i synth_cart.nhdr -b 8 -o synth_cart.png"
-
-Doo "../code/CoordShift-swap synth.json disp_swap.nrrd equal_area_swap.json" > /dev/null
-Doo "gdal_rasterize -ts $TS_S -te $TE_S -ot UInt16 -a STATE equal_area_swap.json synth_cart_swap.tiff" 
-Doo "$T2N -i synth_cart_swap.tiff -co false -o synth_cart_swap.nhdr" > /dev/null
-Doo "unu quantize -i synth_cart_swap.nhdr -b 8 -o synth_cart_swap.png"
+#Doo "../code/CoordShift synth.json disp.nrrd equal_area.json" 
+#Doo "gdal_rasterize -ts $TS -te $TE -ot UInt16 -a STATE equal_area.json synth_cart.tiff" 
+#Doo "$T2N -i synth_cart.tiff -co false -o synth_cart.nhdr" 
+#Doo "unu quantize -i synth_cart.nhdr -b 8 -o synth_cart.png"
+#
+#Doo "../code/CoordShift-swap synth.json disp_swap.nrrd equal_area_swap.json" 
+#Doo "gdal_rasterize -ts $TS_S -te $TE_S -ot UInt16 -a STATE equal_area_swap.json synth_cart_swap.tiff" 
+#Doo "$T2N -i synth_cart_swap.tiff -co false -o synth_cart_swap.nhdr" 
+#Doo "unu quantize -i synth_cart_swap.nhdr -b 8 -o synth_cart_swap.png"
